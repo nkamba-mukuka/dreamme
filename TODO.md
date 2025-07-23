@@ -1,4 +1,4 @@
-# FitLife Project TODOs
+# DREAMME Project TODOs
 
 ## Milestone 1: Project Setup and Infrastructure
 - [x] Initialize monorepo with PNPM workspaces and Turborepo

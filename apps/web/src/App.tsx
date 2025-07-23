@@ -1,10 +1,10 @@
-import { Button } from './components/ui/button'
+import { Button } from '@dreamme/ui'
 
 export default function App() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold mb-8">DREA,ME</h1>
+        <h1 className="text-4xl font-bold mb-8">DREAMME</h1>
         <div className="space-y-4">
           <div className="p-6 bg-card rounded-lg shadow-lg">
             <h2 className="text-2xl font-semibold mb-4">Welcome to Your Fitness Journey</h2>
