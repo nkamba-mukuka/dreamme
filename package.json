@@ -1,0 +1,32 @@
+{
+  "name": "dream-me",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A modern, personalized fitness web application",
+  "scripts": {
+    "dev": "turbo run dev --",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "prepare": "husky install"
+  },
+  "keywords": [
+    "fitness",
+    "health",
+    "workout",
+    "nutrition"
+  ],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.13.1",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "turbo": "^1.12.4",
+    "prettier": "^3.2.5",
+    "husky": "^8.0.0",
+    "lint-staged": "^16.1.2"
+  }
+}
