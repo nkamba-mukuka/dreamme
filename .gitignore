@@ -9,7 +9,7 @@ build
 out
 
 # Environment files
-.env
+
 .env.*
 !.env.example
 

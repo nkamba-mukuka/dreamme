@@ -1,20 +1,26 @@
 # DREAMME Project TODOs
 
-## Milestone 1: Project Setup and Infrastructure
+## Milestone 1: Project Setup and Infrastructure ✅
 - [x] Initialize monorepo with PNPM workspaces and Turborepo
 - [x] Set up React + Vite frontend with TypeScript configuration
 - [x] Configure shadcn/ui, Tailwind CSS, and design system
-- [ ] Set up Firebase project and initial configuration
+- [x] Set up Firebase project and initial configuration
 - [x] Configure development tools (ESLint, Prettier, Husky)
 
 ## Milestone 2: Authentication and User Management
-- [ ] Implement Firebase Authentication (email/password, Google, Apple)
-- [ ] Create user profile management system
-- [ ] Implement personalized onboarding flow
-  - [ ] Design onboarding screens
-  - [ ] Implement goal selection
-  - [ ] Add fitness level assessment
-  - [ ] Create personalization questionnaire
+- [x] Implement Firebase Authentication
+  - [x] Email/password authentication
+  - [x] Google authentication
+  - [ ] Apple authentication (optional)
+- [x] Create user profile management system
+  - [x] User profile schema
+  - [x] Profile creation during onboarding
+  - [ ] Profile editing in dashboard
+- [x] Implement personalized onboarding flow
+  - [x] Design onboarding screens
+  - [x] Implement goal selection
+  - [x] Add fitness level assessment
+  - [x] Create personalization questionnaire
 
 ## Milestone 3: Core Exercise Features
 - [ ] Build exercise library with YouTube integration
@@ -46,10 +52,12 @@
 - [ ] Create end-to-end test suites
 
 ## Progress Tracking
-- Current Milestone: 1
-- Current Task: Set up Firebase project and initial configuration
+- Current Milestone: 2
+- Current Task: Add profile editing to dashboard
 - Status: In Progress
 
 ## Next Steps
-1. Set up Firebase project and configuration
-2. Begin implementing authentication system 
+1. Create profile editing form in dashboard
+2. Add profile picture upload functionality
+3. Implement user preferences section
+4. Start working on exercise library (Milestone 3) 

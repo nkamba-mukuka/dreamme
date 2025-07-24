@@ -11,12 +11,10 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "clean": "turbo run clean && rm -rf node_modules",
-    "prepare": "husky install"
+    "clean": "turbo run clean && rm -rf node_modules"
   },
   "devDependencies": {
     "@types/node": "^18.19.0",
-    "lint-staged": "^16.1.2",
     "prettier": "^3.2.5",
     "turbo": "^1.12.4"
   },
