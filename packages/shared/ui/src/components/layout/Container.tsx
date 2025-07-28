@@ -10,24 +10,25 @@ export interface ContainerProps extends React.HTMLAttributes<HTMLDivElement> {
 export const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
     ({ className, size = 'lg', padding = 'md', center = true, children, ...props }, ref) => {
         const sizes = {
-            sm: 'max-w-screen-sm',
-            md: 'max-w-screen-md',
-            lg: 'max-w-screen-lg',
-            xl: 'max-w-screen-xl',
-            full: 'max-w-full'
+            sm: 'w-full max-w-screen-sm',
+            md: 'w-full max-w-screen-md',
+            lg: 'w-full max-w-screen-lg',
+            xl: 'w-full max-w-screen-xl',
+            full: 'w-full'
         };
 
         const paddings = {
             none: 'px-0',
-            sm: 'px-4',
-            md: 'px-6',
-            lg: 'px-8'
+            sm: 'px-3 sm:px-4',
+            md: 'px-4 sm:px-6 lg:px-8',
+            lg: 'px-4 sm:px-8 lg:px-12'
         };
 
         return (
             <div
                 ref={ref}
                 className={cn(
+                    'box-border',
                     sizes[size],
                     paddings[padding],
                     center && 'mx-auto',

@@ -4,17 +4,13 @@ import { Button, Card } from '@dreamme/ui';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { ProfileImageUpload } from '../components/profile/ProfileImageUpload';
-import { ProfileStats } from '../components/profile/ProfileStats';
-import { ProfileActivity } from '../components/profile/ProfileActivity';
 
 interface UserProfile {
     displayName: string;
     age: number;
-    bio: string;
-    fitnessGoal: string;
-    fitnessLevel: 'beginner' | 'intermediate' | 'advanced';
+    weight: number;
+    email: string;
     photoURL?: string;
-    createdAt: Date;
     updatedAt: Date;
 }
 
@@ -27,15 +23,13 @@ export default function Profile() {
     const [formData, setFormData] = useState<{
         displayName: string;
         age: number;
-        bio: string;
-        fitnessGoal: string;
-        fitnessLevel: 'beginner' | 'intermediate' | 'advanced';
+        weight: number;
+        email: string;
     }>({
         displayName: '',
         age: 0,
-        bio: '',
-        fitnessGoal: '',
-        fitnessLevel: 'beginner'
+        weight: 0,
+        email: ''
     });
 
     useEffect(() => {
@@ -54,12 +48,17 @@ export default function Profile() {
                 const data = profileDoc.data() as UserProfile;
                 setProfile(data);
                 setFormData({
-                    displayName: data.displayName,
-                    age: data.age,
-                    bio: data.bio,
-                    fitnessGoal: data.fitnessGoal,
-                    fitnessLevel: data.fitnessLevel
+                    displayName: data.displayName || '',
+                    age: data.age || 0,
+                    weight: data.weight || 0,
+                    email: data.email || user.email || ''
                 });
+            } else {
+                // Initialize with user's email if profile doesn't exist
+                setFormData(prev => ({
+                    ...prev,
+                    email: user.email || ''
+                }));
             }
         } catch (err) {
             console.error('Error loading profile:', err);
@@ -92,11 +91,11 @@ export default function Profile() {
         }
     };
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value, type } = e.target;
         setFormData(prev => ({
             ...prev,
-            [name]: name === 'age' ? parseInt(value) : value
+            [name]: type === 'number' ? parseFloat(value) : value
         }));
     };
 
@@ -131,147 +130,127 @@ export default function Profile() {
     }
 
     return (
-        <div className="container mx-auto px-4 py-8">
-            {/* Header Section */}
-            <div className="bg-white rounded-xl shadow-sm p-8 mb-8">
-                <div className="flex flex-col md:flex-row items-center gap-8">
-                    <ProfileImageUpload
-                        userId={user.uid}
-                        currentPhotoURL={profile?.photoURL}
-                        onUploadComplete={handlePhotoUpload}
-                    />
-                    <div className="flex-1 text-center md:text-left">
-                        <h1 className="text-3xl font-bold text-gray-900">{profile?.displayName}</h1>
-                        <p className="text-gray-600 mt-2">{profile?.bio}</p>
-                        <div className="flex flex-wrap gap-4 mt-4 justify-center md:justify-start">
-                            <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm">
-                                {profile?.fitnessLevel ? profile.fitnessLevel.charAt(0).toUpperCase() + profile.fitnessLevel.slice(1) : 'Not Set'}
-                            </span>
-                            <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm">
-                                Goal: {profile?.fitnessGoal || 'Not Set'}
-                            </span>
-                            <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm">
-                                Age: {profile?.age || 'Not Set'}
-                            </span>
+        <div className="container mx-auto px-4 py-8 max-w-md">
+            <Card className="bg-white shadow-lg rounded-2xl overflow-hidden">
+                <div className="p-6">
+                    <div className="flex flex-col items-center">
+                        <div className="mb-6 w-32 h-32">
+                            <ProfileImageUpload
+                                userId={user.uid}
+                                currentPhotoURL={profile?.photoURL}
+                                onUploadComplete={handlePhotoUpload}
+                            />
                         </div>
-                        {!isEditing && (
-                            <Button
-                                onClick={() => setIsEditing(true)}
-                                variant="outline"
-                                className="mt-6"
-                            >
-                                Edit Profile
-                            </Button>
+
+                        {!isEditing ? (
+                            // View Mode
+                            <div className="w-full space-y-4">
+                                <div className="text-center mb-6">
+                                    <h1 className="text-2xl font-bold text-gray-900">
+                                        {profile?.displayName || 'Add Your Name'}
+                                    </h1>
+                                    <p className="text-gray-500">{profile?.email || user.email}</p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-gray-50 p-4 rounded-lg text-center">
+                                        <p className="text-sm text-gray-500">Age</p>
+                                        <p className="font-semibold">{profile?.age || 'Not set'}</p>
+                                    </div>
+                                    <div className="bg-gray-50 p-4 rounded-lg text-center">
+                                        <p className="text-sm text-gray-500">Weight</p>
+                                        <p className="font-semibold">{profile?.weight ? `${profile.weight} kg` : 'Not set'}</p>
+                                    </div>
+                                </div>
+
+                                <Button
+                                    onClick={() => setIsEditing(true)}
+                                    variant="primary"
+                                    className="w-full mt-6"
+                                >
+                                    Edit Profile
+                                </Button>
+                            </div>
+                        ) : (
+                            // Edit Mode
+                            <form onSubmit={handleSubmit} className="w-full space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                                    <input
+                                        type="text"
+                                        name="displayName"
+                                        value={formData.displayName}
+                                        onChange={handleInputChange}
+                                        className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent"
+                                        placeholder="Your name"
+                                        required
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        value={formData.email}
+                                        onChange={handleInputChange}
+                                        className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent bg-gray-50"
+                                        placeholder="Your email"
+                                        readOnly
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
+                                    <input
+                                        type="number"
+                                        name="age"
+                                        value={formData.age || ''}
+                                        onChange={handleInputChange}
+                                        className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent"
+                                        min="13"
+                                        max="120"
+                                        required
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Weight (kg)</label>
+                                    <input
+                                        type="number"
+                                        name="weight"
+                                        value={formData.weight || ''}
+                                        onChange={handleInputChange}
+                                        className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent"
+                                        min="30"
+                                        max="300"
+                                        step="0.1"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="flex gap-4 pt-4">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="flex-1"
+                                        onClick={() => setIsEditing(false)}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        type="submit"
+                                        variant="primary"
+                                        className="flex-1"
+                                    >
+                                        Save Changes
+                                    </Button>
+                                </div>
+                            </form>
                         )}
                     </div>
                 </div>
-
-                {/* Edit Form */}
-                {isEditing && (
-                    <form onSubmit={handleSubmit} className="mt-8 border-t border-gray-200 pt-8">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block font-medium mb-2 text-gray-700">Display Name</label>
-                                <input
-                                    type="text"
-                                    name="displayName"
-                                    value={formData.displayName}
-                                    onChange={handleInputChange}
-                                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block font-medium mb-2 text-gray-700">Age</label>
-                                <input
-                                    type="number"
-                                    name="age"
-                                    value={formData.age}
-                                    onChange={handleInputChange}
-                                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent"
-                                    required
-                                    min="13"
-                                    max="120"
-                                />
-                            </div>
-
-                            <div className="md:col-span-2">
-                                <label className="block font-medium mb-2 text-gray-700">Bio</label>
-                                <textarea
-                                    name="bio"
-                                    value={formData.bio}
-                                    onChange={handleInputChange}
-                                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent"
-                                    rows={3}
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block font-medium mb-2 text-gray-700">Fitness Goal</label>
-                                <select
-                                    name="fitnessGoal"
-                                    value={formData.fitnessGoal}
-                                    onChange={handleInputChange}
-                                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent"
-                                    required
-                                >
-                                    <option value="">Select a goal</option>
-                                    <option value="weight-loss">Weight Loss</option>
-                                    <option value="muscle-gain">Muscle Gain</option>
-                                    <option value="endurance">Endurance</option>
-                                    <option value="flexibility">Flexibility</option>
-                                    <option value="general">General Fitness</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block font-medium mb-2 text-gray-700">Fitness Level</label>
-                                <select
-                                    name="fitnessLevel"
-                                    value={formData.fitnessLevel}
-                                    onChange={handleInputChange}
-                                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent"
-                                    required
-                                >
-                                    <option value="beginner">Beginner</option>
-                                    <option value="intermediate">Intermediate</option>
-                                    <option value="advanced">Advanced</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end gap-4 mt-6">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => setIsEditing(false)}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                type="submit"
-                                variant="primary"
-                            >
-                                Save Changes
-                            </Button>
-                        </div>
-                    </form>
-                )}
-            </div>
-
-            {/* Stats and Activity Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Stats - Takes up 2 columns */}
-                <div className="lg:col-span-2">
-                    <ProfileStats userId={user.uid} />
-                </div>
-
-                {/* Activity Feed - Takes up 1 column */}
-                <div>
-                    <ProfileActivity userId={user.uid} />
-                </div>
-            </div>
+            </Card>
         </div>
     );
 } 

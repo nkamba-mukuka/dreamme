@@ -42,4 +42,7 @@ export interface PersonalInfo {
     height?: number; // in cm
     weight?: number; // in kg
     targetWeight?: number; // in kg
+    bio?: string;
+    location?: string;
+    avatar?: string;
 } 

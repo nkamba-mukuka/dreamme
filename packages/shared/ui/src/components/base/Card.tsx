@@ -17,16 +17,16 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
 
         const paddings = {
             none: 'p-0',
-            sm: 'p-4',
-            md: 'p-6',
-            lg: 'p-8'
+            sm: 'p-3 sm:p-4',
+            md: 'p-4 sm:p-5 lg:p-6',
+            lg: 'p-5 sm:p-6 lg:p-8'
         };
 
         return (
             <div
                 ref={ref}
                 className={cn(
-                    'rounded-xl shadow-sm',
+                    'rounded-xl shadow-sm w-full overflow-hidden',
                     variants[variant],
                     paddings[padding],
                     className

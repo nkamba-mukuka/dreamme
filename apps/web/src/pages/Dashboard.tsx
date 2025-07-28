@@ -7,6 +7,7 @@ import { db } from '../lib/firebase';
 import { motion } from 'framer-motion';
 import { exerciseService } from '../services/exerciseService';
 import { userProfileService } from '../services/userProfile';
+import { ActivityFeed } from '../components/dashboard/ActivityFeed';
 
 interface DailyActivity {
     exercise: boolean;
@@ -127,7 +128,7 @@ export default function Dashboard() {
             variants={container}
             initial="hidden"
             animate="show"
-            className="container mx-auto px-4 py-8"
+            className="container mx-auto px-4 py-8 space-y-8"
         >
             <motion.h1
                 variants={item}
@@ -136,12 +137,9 @@ export default function Dashboard() {
                 Welcome DreamMe!
             </motion.h1>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <motion.div variants={item} className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Exercise Card */}
-                <motion.div
-                    variants={item}
-                    className="bg-white/10 backdrop-blur-lg rounded-xl p-6 text-white"
-                >
+                <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 text-white">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-semibold">Exercise</h2>
                         <span className="text-3xl">💪</span>
@@ -193,13 +191,10 @@ export default function Dashboard() {
                             </Button>
                         </div>
                     )}
-                </motion.div>
+                </div>
 
                 {/* Nutrition Card */}
-                <motion.div
-                    variants={item}
-                    className="bg-white/10 backdrop-blur-lg rounded-xl p-6 text-white"
-                >
+                <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 text-white">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-semibold">Nutrition</h2>
                         <span className="text-3xl">🥗</span>
@@ -232,13 +227,10 @@ export default function Dashboard() {
                             </Button>
                         </div>
                     )}
-                </motion.div>
+                </div>
 
                 {/* Mental Health Card */}
-                <motion.div
-                    variants={item}
-                    className="bg-white/10 backdrop-blur-lg rounded-xl p-6 text-white"
-                >
+                <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 text-white">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-semibold">Mental Health</h2>
                         <span className="text-3xl">🧠</span>
@@ -266,8 +258,14 @@ export default function Dashboard() {
                             </Button>
                         </div>
                     )}
-                </motion.div>
-            </div>
+                </div>
+            </motion.div>
+
+            {/* Activity Feed */}
+            <motion.div variants={item}>
+                <h2 className="text-2xl font-semibold text-white mb-4">Recent Activity</h2>
+                <ActivityFeed />
+            </motion.div>
         </motion.div>
     );
 } 

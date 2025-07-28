@@ -5,13 +5,10 @@ import { ExerciseList } from '../components/exercise/ExerciseList';
 import { WorkoutLogForm } from '../components/exercise/WorkoutLogForm';
 import { ProgressDashboard, ProgressDashboardRef } from '../components/exercise/ProgressDashboard';
 import { WorkoutHistory } from '../components/exercise/WorkoutHistory';
-import { ActivityFeed } from '../components/dashboard/ActivityFeed';
 
 type View = 'exercises' | 'workout' | 'progress' | 'history';
 
-export default Exercise;
-
-export function Exercise() {
+export default function Exercise() {
     const [currentView, setCurrentView] = useState<View>('exercises');
     const progressDashboardRef = useRef<ProgressDashboardRef>(null);
 
@@ -77,12 +74,6 @@ export function Exercise() {
                             <WorkoutHistory limit={20} />
                         )}
                     </div>
-                </div>
-
-                {/* Activity Feed Section */}
-                <div>
-                    <h2 className="text-2xl font-semibold text-white mb-4">Your Activity</h2>
-                    <ActivityFeed />
                 </div>
             </div>
         </div>

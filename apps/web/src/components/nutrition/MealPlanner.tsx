@@ -74,6 +74,7 @@ export function MealPlanner({ onReplaceMeal }: { onReplaceMeal: () => void }) {
     const [error, setError] = useState<string | null>(null);
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [mealPlan, setMealPlan] = useState<DailyMealPlan | null>(null);
+    const [completing, setCompleting] = useState(false);
 
     // Get week dates
     const weekDates = Array.from({ length: 7 }, (_, i) => {
@@ -105,6 +106,30 @@ export function MealPlanner({ onReplaceMeal }: { onReplaceMeal: () => void }) {
 
     const handleDateSelect = (date: Date) => {
         setSelectedDate(date);
+    };
+
+    const handleCompleteMealPlan = async () => {
+        if (!user || !mealPlan) return;
+
+        try {
+            setCompleting(true);
+            await nutritionService.completeDailyMealPlan(user.uid, selectedDate);
+
+            // Update local state
+            setMealPlan(prev => prev ? {
+                ...prev,
+                completed: true,
+                updatedAt: new Date()
+            } : null);
+
+            // Show success message
+            alert('Great job! Your meal plan has been marked as completed.');
+        } catch (error) {
+            console.error('Error completing meal plan:', error);
+            alert('Failed to mark meal plan as completed. Please try again.');
+        } finally {
+            setCompleting(false);
+        }
     };
 
     if (loading) {
@@ -204,10 +229,22 @@ export function MealPlanner({ onReplaceMeal }: { onReplaceMeal: () => void }) {
                 >
                     Previous Week
                 </Button>
-                <h2 className="text-xl font-semibold">
-                    {weekDates[0].toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} -
-                    {weekDates[6].toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                </h2>
+                <div className="text-center">
+                    <h2 className="text-xl font-semibold">
+                        {weekDates[0].toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} -
+                        {weekDates[6].toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    </h2>
+                    {mealPlan && selectedDate.toDateString() === new Date().toDateString() && (
+                        <Button
+                            variant="primary"
+                            className="mt-4"
+                            onClick={handleCompleteMealPlan}
+                            disabled={completing || mealPlan.completed}
+                        >
+                            {completing ? 'Saving...' : mealPlan.completed ? 'Completed!' : 'I Ate Today! 🎉'}
+                        </Button>
+                    )}
+                </div>
                 <Button
                     variant="outline"
                     onClick={() => {

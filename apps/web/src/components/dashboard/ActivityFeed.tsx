@@ -17,6 +17,9 @@ interface ActivityLog {
         sets?: { reps: number; weight: number }[];
         notes?: string;
         rating?: number;
+        meals?: { name: string; calories: number }[];
+        totalCalories?: number;
+        macros?: { protein: number; carbs: number; fat: number };
     };
 }
 
@@ -92,14 +95,33 @@ export function ActivityFeed() {
                         }
                     };
                 }),
-                ...meals.docs.map(doc => ({
-                    id: doc.id,
-                    type: 'nutrition' as const,
-                    title: 'Logged a meal',
-                    description: `Logged ${doc.data().mealType}`,
-                    timestamp: doc.data().createdAt.toDate(),
-                    icon: '🍽️'
-                })),
+                ...meals.docs.map(doc => {
+                    const data = doc.data();
+                    if (data.type === 'daily_completion') {
+                        return {
+                            id: doc.id,
+                            type: 'nutrition' as const,
+                            title: 'Completed Daily Meal Plan',
+                            description: `Followed meal plan (${data.totalCalories} calories)`,
+                            timestamp: data.createdAt.toDate(),
+                            icon: '🍽️',
+                            details: {
+                                meals: data.meals,
+                                totalCalories: data.totalCalories,
+                                macros: data.macros
+                            }
+                        };
+                    } else {
+                        return {
+                            id: doc.id,
+                            type: 'nutrition' as const,
+                            title: 'Logged a meal',
+                            description: `Logged ${data.mealType}`,
+                            timestamp: data.createdAt.toDate(),
+                            icon: '🍽️'
+                        };
+                    }
+                }),
                 ...mental.docs.map(doc => ({
                     id: doc.id,
                     type: 'mental' as const,
@@ -206,6 +228,25 @@ export function ActivityFeed() {
                                             "{activity.details.notes}"
                                         </p>
                                     )}
+                                </div>
+                            )}
+
+                            {/* Nutrition Details */}
+                            {activity.type === 'nutrition' && activity.details?.meals && activity.details.macros && (
+                                <div className="mt-2 space-y-2">
+                                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                                        <span>{activity.details.totalCalories} calories total</span>
+                                        <span>
+                                            {activity.details.macros.protein}g protein • {activity.details.macros.carbs}g carbs • {activity.details.macros.fat}g fat
+                                        </span>
+                                    </div>
+                                    <div className="text-sm text-gray-500">
+                                        {activity.details.meals.map((meal, i) => (
+                                            <span key={i} className="mr-4">
+                                                {meal.name} ({meal.calories} cal)
+                                            </span>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
 

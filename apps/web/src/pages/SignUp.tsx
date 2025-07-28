@@ -29,22 +29,22 @@ export default function SignUp() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-            {/* Video Background */}
-            <video
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="absolute w-full h-full object-cover"
-                style={{ filter: 'brightness(0.6)' }}
-            >
-                <source src="/login_background.mp4" type="video/mp4" />
-                Your browser does not support the video tag.
-            </video>
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-400 via-purple-400 to-pink-400 px-4 relative overflow-hidden">
+            {/* Animated background shapes */}
+            <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 0.1 }}
+                transition={{ duration: 2, repeat: Infinity, repeatType: "reverse" }}
+                className="absolute w-96 h-96 bg-white rounded-full blur-3xl -top-20 -left-20"
+            />
+            <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 0.1 }}
+                transition={{ duration: 2, repeat: Infinity, repeatType: "reverse", delay: 0.5 }}
+                className="absolute w-96 h-96 bg-white rounded-full blur-3xl -bottom-20 -right-20"
+            />
 
-            {/* Content */}
-            <div className="w-full max-w-md bg-black/30 p-8 rounded-3xl shadow-2xl backdrop-blur-xl space-y-8 relative z-10 border border-white/20">
+            <div className="w-full max-w-md bg-white/10 p-8 rounded-3xl shadow-2xl backdrop-blur-xl space-y-8 relative z-10 border border-white/20">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -109,8 +109,7 @@ export default function SignUp() {
 
                         <Button
                             type="submit"
-                            variant="primary"
-                            className="w-full"
+                            className="w-full bg-gradient-to-r from-indigo-300 to-purple-300 hover:from-indigo-400 hover:to-purple-400 text-white font-medium py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                             disabled={loading}
                         >
                             {loading ? 'Creating Account...' : 'Create Account'}

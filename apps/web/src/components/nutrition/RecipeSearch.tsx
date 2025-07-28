@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { Button } from '@dreamme/ui';
 import { nutritionService } from '../../services/nutritionService';
 import type { Meal as MealType } from '../../types/nutrition';
+import { RecipeDetail } from './RecipeDetail';
 
 interface RecipeSearchProps {
-    onSelect: (meal: MealType) => void;
-    onCancel: () => void;
+    onSelect?: (meal: MealType) => void;
+    onCancel?: () => void;
+    standalone?: boolean;
 }
 
 const dietaryRestrictions: { value: string; label: string }[] = [
@@ -17,10 +19,11 @@ const dietaryRestrictions: { value: string; label: string }[] = [
     { value: 'keto', label: 'Keto' }
 ];
 
-export function RecipeSearch({ onSelect, onCancel }: RecipeSearchProps) {
+export function RecipeSearch({ onSelect, onCancel, standalone = false }: RecipeSearchProps) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [meals, setMeals] = useState<MealType[]>([]);
+    const [selectedRecipe, setSelectedRecipe] = useState<MealType | null>(null);
 
     // Search params state
     const [searchTerm, setSearchTerm] = useState('');
@@ -50,6 +53,25 @@ export function RecipeSearch({ onSelect, onCancel }: RecipeSearchProps) {
         // Initial search without filters
         searchRecipes();
     }, []);
+
+    const handleRecipeClick = (meal: MealType) => {
+        if (standalone) {
+            setSelectedRecipe(meal);
+        } else if (onSelect) {
+            onSelect(meal);
+        }
+    };
+
+    // If a recipe is selected and we're in standalone mode, show the recipe detail
+    if (selectedRecipe && standalone) {
+        return (
+            <RecipeDetail
+                recipe={selectedRecipe}
+                onClose={() => setSelectedRecipe(null)}
+                onAddToMealPlan={onSelect ? () => onSelect(selectedRecipe) : undefined}
+            />
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -121,7 +143,7 @@ export function RecipeSearch({ onSelect, onCancel }: RecipeSearchProps) {
                             <div
                                 key={meal.name}
                                 className="bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                                onClick={() => onSelect(meal)}
+                                onClick={() => handleRecipeClick(meal)}
                             >
                                 <div className="flex gap-4">
                                     <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100">
@@ -134,7 +156,7 @@ export function RecipeSearch({ onSelect, onCancel }: RecipeSearchProps) {
                                     <div className="flex-1">
                                         <h3 className="font-semibold mb-1">{meal.name}</h3>
                                         <p className="text-sm text-muted-foreground line-clamp-2">
-                                            {meal.recipe}
+                                            {meal.description}
                                         </p>
                                         <div className="flex flex-wrap gap-2 mt-2">
                                             <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
@@ -159,11 +181,13 @@ export function RecipeSearch({ onSelect, onCancel }: RecipeSearchProps) {
                 )}
             </div>
 
-            <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={onCancel}>
-                    Cancel
-                </Button>
-            </div>
+            {onCancel && (
+                <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={onCancel}>
+                        Cancel
+                    </Button>
+                </div>
+            )}
         </div>
     );
 } 

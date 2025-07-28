@@ -1,6 +1,6 @@
-import { doc, getDoc, setDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, where, getDocs, limit, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import type { NutritionLog, NutritionInfo, MealType, LoggedMeal, DailyMealPlan, NutritionGoals, Meal } from '../types/nutrition';
+import type { NutritionLog, NutritionInfo, MealType, LoggedMeal, DailyMealPlan, NutritionGoals, Meal, NutritionProgress } from '../types/nutrition';
 
 // Default meal recommendations
 const MEAL_RECOMMENDATIONS: Record<string, { breakfast: Meal[]; lunch: Meal[]; dinner: Meal[] }> = {
@@ -637,6 +637,107 @@ export const nutritionService = {
         }
     },
 
+    async completeDailyMealPlan(userId: string, date: Date): Promise<void> {
+        try {
+            const today = new Date(date);
+            today.setHours(0, 0, 0, 0);
+
+            const mealPlanId = `${userId}_${today.toISOString().split('T')[0]}`;
+            const mealPlanRef = doc(db, 'dailyMealPlans', mealPlanId);
+
+            // First, ensure we have a meal plan
+            let mealPlanDoc = await getDoc(mealPlanRef);
+            let mealPlan: DailyMealPlan;
+
+            if (!mealPlanDoc.exists()) {
+                // Generate a new meal plan
+                mealPlan = await this.generateDailyMealPlan(userId);
+
+                // Set the document with the generated plan
+                await setDoc(mealPlanRef, {
+                    ...mealPlan,
+                    id: mealPlanId,
+                    date: today,
+                    completed: false,
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                });
+
+                // Get the fresh document
+                mealPlanDoc = await getDoc(mealPlanRef);
+            }
+
+            // Now we can safely update it
+            await updateDoc(mealPlanRef, {
+                completed: true,
+                updatedAt: new Date()
+            });
+
+            // Create nutrition progress entry
+            const progressRef = doc(db, 'nutritionProgress', mealPlanId);
+            const data = mealPlanDoc.data() as DailyMealPlan;
+
+            const totalCalories = [data.breakfast, data.lunch, data.dinner, ...(data.snacks || [])]
+                .reduce((sum, meal) => sum + meal.nutritionInfo.calories, 0);
+
+            const totalMacros = [data.breakfast, data.lunch, data.dinner, ...(data.snacks || [])]
+                .reduce((sum, meal) => ({
+                    protein: sum.protein + meal.nutritionInfo.protein,
+                    carbs: sum.carbs + meal.nutritionInfo.carbs,
+                    fat: sum.fat + meal.nutritionInfo.fat
+                }), { protein: 0, carbs: 0, fat: 0 });
+
+            // Create progress document
+            await setDoc(progressRef, {
+                id: mealPlanId,
+                userId,
+                date: today,
+                meals: [
+                    { mealId: data.breakfast.id, type: 'breakfast', completed: true },
+                    { mealId: data.lunch.id, type: 'lunch', completed: true },
+                    { mealId: data.dinner.id, type: 'dinner', completed: true },
+                    ...(data.snacks || []).map(snack => ({
+                        mealId: snack.id,
+                        type: 'snack' as const,
+                        completed: true
+                    }))
+                ],
+                totalCalories,
+                macros: totalMacros,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            });
+
+            // Create meal log entry for activity feed
+            const mealLogRef = doc(collection(db, 'mealLogs'));
+            await setDoc(mealLogRef, {
+                id: mealLogRef.id,
+                userId,
+                date: today,
+                mealPlanId,
+                type: 'daily_completion',
+                meals: [
+                    { name: data.breakfast.name, type: 'breakfast', calories: data.breakfast.nutritionInfo.calories },
+                    { name: data.lunch.name, type: 'lunch', calories: data.lunch.nutritionInfo.calories },
+                    { name: data.dinner.name, type: 'dinner', calories: data.dinner.nutritionInfo.calories },
+                    ...(data.snacks || []).map(snack => ({
+                        name: snack.name,
+                        type: 'snack',
+                        calories: snack.nutritionInfo.calories
+                    }))
+                ],
+                totalCalories,
+                macros: totalMacros,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            });
+
+        } catch (error) {
+            console.error('Error completing daily meal plan:', error);
+            throw error;
+        }
+    },
+
     async searchRecipes(params: {
         searchTerm?: string;
         dietaryRestrictions?: string[];
@@ -674,6 +775,25 @@ export const nutritionService = {
             return filteredMeals.sort((a, b) => a.name.localeCompare(b.name));
         } catch (error) {
             console.error('Error searching recipes:', error);
+            throw error;
+        }
+    },
+
+    async getNutritionProgress(userId: string, date: Date): Promise<NutritionProgress | null> {
+        try {
+            const today = new Date(date);
+            today.setHours(0, 0, 0, 0);
+
+            const progressId = `${userId}_${today.toISOString().split('T')[0]}`;
+            const progressDoc = await getDoc(doc(db, 'nutritionProgress', progressId));
+
+            if (!progressDoc.exists()) {
+                return null;
+            }
+
+            return progressDoc.data() as NutritionProgress;
+        } catch (error) {
+            console.error('Error getting nutrition progress:', error);
             throw error;
         }
     }

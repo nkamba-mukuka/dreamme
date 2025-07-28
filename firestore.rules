@@ -66,6 +66,17 @@ service cloud.firestore {
             allow write: if isSignedIn() && isOwner(userId);
         }
 
+        match /nutritionProgress/{progressId} {
+            allow read: if isSignedIn() && (
+                progressId.matches(request.auth.uid + '_.*') || 
+                resource.data.userId == request.auth.uid
+            );
+            allow write: if isSignedIn() && (
+                progressId.matches(request.auth.uid + '_.*') || 
+                request.resource.data.userId == request.auth.uid
+            );
+        }
+
         match /recipes/{recipeId} {
             allow read: if isSignedIn();
             allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;

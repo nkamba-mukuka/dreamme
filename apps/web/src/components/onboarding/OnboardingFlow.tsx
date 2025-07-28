@@ -77,28 +77,19 @@ export function OnboardingFlow() {
                 Object.entries(goals).filter(([_, value]) => value != null)
             );
 
-            // Save user profile with fitness goals
-            await setDoc(doc(db, 'profiles', user.uid), {
-                ...cleanGoals,
-                userId: user.uid, // Add userId to the document
-                createdAt: new Date(),
-                updatedAt: new Date(),
-            });
-
-            console.log('Profile saved successfully');
-
-            // Generate initial workout plan
-            await exerciseService.generateDailyWorkout(user.uid, goals.primaryGoal);
-            console.log('Workout plan generated successfully');
-
-            // Generate initial meal plan
-            await nutritionService.generateDailyMealPlan(user.uid);
-            console.log('Meal plan generated successfully');
-
             // Calculate daily calorie target
             const calorieTarget = calculateCalorieTarget(goals);
 
-            // Create initial nutrition goals document
+            // 1. First, create the user profile
+            await setDoc(doc(db, 'profiles', user.uid), {
+                ...cleanGoals,
+                userId: user.uid,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            });
+            console.log('Profile saved successfully');
+
+            // 2. Then create nutrition goals
             await setDoc(doc(db, 'nutritionGoals', user.uid), {
                 id: user.uid,
                 userId: user.uid,
@@ -117,12 +108,11 @@ export function OnboardingFlow() {
                 createdAt: new Date(),
                 updatedAt: new Date()
             });
-
             console.log('Nutrition goals saved successfully');
 
-            // Initialize progress tracking
+            // 3. Initialize progress tracking
             await setDoc(doc(db, 'progress', user.uid), {
-                userId: user.uid, // Add userId to the document
+                userId: user.uid,
                 workouts: {
                     completed: 0,
                     goal: goals.weeklyWorkouts,
@@ -147,11 +137,20 @@ export function OnboardingFlow() {
                 createdAt: new Date(),
                 updatedAt: new Date(),
             });
-
             console.log('Progress tracking initialized successfully');
+
+            // 4. Generate initial workout plan
+            await exerciseService.generateDailyWorkout(user.uid, goals.primaryGoal);
+            console.log('Workout plan generated successfully');
+
+            // 5. Finally, generate initial meal plan
+            const mealPlan = await nutritionService.generateDailyMealPlan(user.uid);
+            console.log('Meal plan generated successfully:', mealPlan);
+
+            // Navigate to dashboard
             navigate('/dashboard');
         } catch (error: any) {
-            console.error('Error saving profile:', error);
+            console.error('Error during onboarding:', error);
             // More descriptive error message based on the error type
             if (error.code === 'permission-denied') {
                 setError('Permission denied. Please try logging out and back in.');
