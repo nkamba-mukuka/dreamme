@@ -6,7 +6,7 @@ import { useAuth } from '../../lib/auth';
 
 export function Layout() {
     const location = useLocation();
-    const { signOut } = useAuth();
+    const { user, loading, signOut } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
 

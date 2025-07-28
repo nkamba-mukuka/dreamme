@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@dreamme/ui';
 import { nutritionService } from '../../services/nutritionService';
 import type { Meal as MealType } from '../../types/nutrition';
-import { RecipeDetail } from './RecipeDetail';
+import { RecipeDetail } from './RecipeDetail.tsx';
 
 interface RecipeSearchProps {
     onSelect?: (meal: MealType) => void;
@@ -62,11 +62,10 @@ export function RecipeSearch({ onSelect, onCancel, standalone = false }: RecipeS
         }
     };
 
-    // If a recipe is selected and we're in standalone mode, show the recipe detail
     if (selectedRecipe && standalone) {
         return (
             <RecipeDetail
-                recipe={selectedRecipe}
+                meal={selectedRecipe}
                 onClose={() => setSelectedRecipe(null)}
                 onAddToMealPlan={onSelect ? () => onSelect(selectedRecipe) : undefined}
             />
