@@ -1,357 +1,159 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@dreamme/ui';
 import { useAuth } from '../../lib/auth';
 import { mentalService } from '../../services/mentalService';
-import type { BreathingPattern, BreathingPreset, BreathingSession, MoodLevel } from '../../types/mental';
 
-const defaultPresets: BreathingPreset[] = [
-    {
-        id: 'box-breathing',
-        name: 'Box Breathing',
-        description: 'A simple but powerful technique used by Navy SEALs for stress relief and focus.',
-        pattern: {
-            name: 'Box Breathing',
-            description: 'Inhale, hold, exhale, and hold for equal counts.',
-            inhaleSeconds: 4,
-            holdInhaleSeconds: 4,
-            exhaleSeconds: 4,
-            holdExhaleSeconds: 4,
-            repetitions: 4,
-            totalDurationSeconds: 64,
-        },
-        benefits: [
-            'Reduces stress and anxiety',
-            'Improves focus and concentration',
-            'Helps regulate blood pressure',
-        ],
-        recommendedFor: [
-            'Stress relief',
-            'Pre-performance',
-            'Focus enhancement',
-        ],
-        difficulty: 'beginner',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-    },
-    {
-        id: '4-7-8',
-        name: '4-7-8 Breathing',
-        description: 'A relaxing breath pattern that promotes better sleep and reduces anxiety.',
-        pattern: {
-            name: '4-7-8 Breathing',
-            description: 'Inhale for 4, hold for 7, exhale for 8.',
-            inhaleSeconds: 4,
-            holdInhaleSeconds: 7,
-            exhaleSeconds: 8,
-            holdExhaleSeconds: 0,
-            repetitions: 4,
-            totalDurationSeconds: 76,
-        },
-        benefits: [
-            'Promotes better sleep',
-            'Reduces anxiety',
-            'Helps manage cravings',
-        ],
-        recommendedFor: [
-            'Sleep preparation',
-            'Anxiety relief',
-            'Stress management',
-        ],
-        difficulty: 'intermediate',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-    },
-];
+interface BreathingExerciseProps {
+    onComplete: () => void;
+}
 
-export function BreathingExercise() {
+export function BreathingExercise({ onComplete }: BreathingExerciseProps) {
     const { user } = useAuth();
-    const [loading, setLoading] = useState(true);
+    const [timeLeft, setTimeLeft] = useState(30); // 30 seconds
+    const [phase, setPhase] = useState<'inhale' | 'hold' | 'exhale'>('inhale');
+    const [isActive, setIsActive] = useState(false);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [presets, setPresets] = useState<BreathingPreset[]>([]);
-    const [selectedPreset, setSelectedPreset] = useState<BreathingPreset | null>(null);
-    const [isExercising, setIsExercising] = useState(false);
-    const [moodBefore, setMoodBefore] = useState<MoodLevel>(3);
-    const [showMoodAfter, setShowMoodAfter] = useState(false);
 
-    useEffect(() => {
-        const loadPresets = async () => {
-            setLoading(true);
-            setError(null);
+    const PHASE_DURATION = {
+        inhale: 4,
+        hold: 4,
+        exhale: 4
+    };
 
-            try {
-                const loadedPresets = await mentalService.getBreathingPresets();
-                setPresets(loadedPresets.length > 0 ? loadedPresets : defaultPresets);
-            } catch (err) {
-                console.error('Error loading breathing presets:', err);
-                setError('Failed to load breathing presets');
-                setPresets(defaultPresets);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        loadPresets();
+    const getNextPhase = useCallback((currentPhase: typeof phase) => {
+        switch (currentPhase) {
+            case 'inhale':
+                return 'hold';
+            case 'hold':
+                return 'exhale';
+            case 'exhale':
+                return 'inhale';
+        }
     }, []);
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center p-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-            </div>
-        );
-    }
-
-    if (isExercising && selectedPreset) {
-        return (
-            <BreathingSession
-                preset={selectedPreset}
-                moodBefore={moodBefore}
-                onComplete={(moodAfter) => {
-                    setIsExercising(false);
-                    setShowMoodAfter(false);
-                    setSelectedPreset(null);
-                }}
-                onCancel={() => {
-                    setIsExercising(false);
-                    setSelectedPreset(null);
-                }}
-            />
-        );
-    }
-
-    return (
-        <div className="space-y-8">
-            <div>
-                <h2 className="text-2xl font-semibold">Breathing Exercises</h2>
-                <p className="text-muted-foreground">Practice guided breathing for relaxation and focus</p>
-            </div>
-
-            {error && (
-                <div className="bg-destructive/10 text-destructive text-sm p-4 rounded-lg border border-destructive/20">
-                    {error}
-                </div>
-            )}
-
-            {/* Breathing Presets */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {presets.map((preset) => (
-                    <div
-                        key={preset.id}
-                        className="bg-white p-6 rounded-xl shadow-sm"
-                    >
-                        <h3 className="text-lg font-semibold mb-2">{preset.name}</h3>
-                        <p className="text-muted-foreground mb-4">{preset.description}</p>
-
-                        <div className="space-y-4 mb-6">
-                            <div>
-                                <h4 className="text-sm font-medium mb-2">Pattern</h4>
-                                <div className="grid grid-cols-2 gap-2 text-sm">
-                                    <div>Inhale: {preset.pattern.inhaleSeconds}s</div>
-                                    <div>Hold: {preset.pattern.holdInhaleSeconds}s</div>
-                                    <div>Exhale: {preset.pattern.exhaleSeconds}s</div>
-                                    <div>Hold: {preset.pattern.holdExhaleSeconds}s</div>
-                                </div>
-                            </div>
-
-                            <div>
-                                <h4 className="text-sm font-medium mb-2">Benefits</h4>
-                                <ul className="list-disc list-inside text-sm text-muted-foreground">
-                                    {preset.benefits.map((benefit, index) => (
-                                        <li key={index}>{benefit}</li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
-                                    {preset.difficulty}
-                                </span>
-                                <span className="text-sm text-muted-foreground">
-                                    {Math.round(preset.pattern.totalDurationSeconds / 60)} min
-                                </span>
-                            </div>
-                            <Button
-                                onClick={() => {
-                                    setSelectedPreset(preset);
-                                    setIsExercising(true);
-                                }}
-                            >
-                                Start
-                            </Button>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-}
-
-interface BreathingSessionProps {
-    preset: BreathingPreset;
-    moodBefore: MoodLevel;
-    onComplete: (moodAfter: MoodLevel) => void;
-    onCancel: () => void;
-}
-
-function BreathingSession({ preset, moodBefore, onComplete, onCancel }: BreathingSessionProps) {
-    const { user } = useAuth();
-    const [phase, setPhase] = useState<'inhale' | 'holdInhale' | 'exhale' | 'holdExhale'>('inhale');
-    const [repetition, setRepetition] = useState(1);
-    const [timeLeft, setTimeLeft] = useState(preset.pattern.inhaleSeconds);
-    const [isPaused, setIsPaused] = useState(false);
-    const [showMoodAfter, setShowMoodAfter] = useState(false);
-    const [moodAfter, setMoodAfter] = useState<MoodLevel>(moodBefore);
-    const circleRef = useRef<HTMLDivElement>(null);
-
     useEffect(() => {
-        if (isPaused) return;
+        if (!isActive) return;
 
-        const timer = setInterval(() => {
-            setTimeLeft((prev) => {
-                if (prev <= 1) {
-                    // Move to next phase
-                    switch (phase) {
-                        case 'inhale':
-                            setPhase('holdInhale');
-                            return preset.pattern.holdInhaleSeconds;
-                        case 'holdInhale':
-                            setPhase('exhale');
-                            return preset.pattern.exhaleSeconds;
-                        case 'exhale':
-                            setPhase('holdExhale');
-                            return preset.pattern.holdExhaleSeconds;
-                        case 'holdExhale':
-                            if (repetition < preset.pattern.repetitions) {
-                                setRepetition((prev) => prev + 1);
-                                setPhase('inhale');
-                                return preset.pattern.inhaleSeconds;
-                            } else {
-                                setShowMoodAfter(true);
-                                return 0;
-                            }
-                    }
+        const interval = setInterval(() => {
+            setTimeLeft(time => {
+                if (time <= 1) {
+                    clearInterval(interval);
+                    handleComplete();
+                    return 0;
                 }
-                return prev - 1;
+                return time - 1;
             });
         }, 1000);
 
-        return () => clearInterval(timer);
-    }, [phase, repetition, isPaused, preset.pattern]);
+        return () => clearInterval(interval);
+    }, [isActive]);
 
     useEffect(() => {
-        if (!circleRef.current) return;
+        if (!isActive) return;
 
-        // Animation based on phase
-        const circle = circleRef.current;
-        circle.style.transition = 'all 1s ease-in-out';
+        const phaseInterval = setInterval(() => {
+            setPhase(currentPhase => getNextPhase(currentPhase));
+        }, PHASE_DURATION[phase] * 1000);
 
-        switch (phase) {
-            case 'inhale':
-                circle.style.transform = 'scale(1.5)';
-                break;
-            case 'holdInhale':
-                circle.style.transform = 'scale(1.5)';
-                break;
-            case 'exhale':
-                circle.style.transform = 'scale(1)';
-                break;
-            case 'holdExhale':
-                circle.style.transform = 'scale(1)';
-                break;
-        }
-    }, [phase]);
+        return () => clearInterval(phaseInterval);
+    }, [isActive, phase, getNextPhase]);
+
+    const handleStart = () => {
+        setIsActive(true);
+    };
 
     const handleComplete = async () => {
         if (!user) return;
 
         try {
-            const session: Omit<BreathingSession, 'id' | 'createdAt' | 'updatedAt'> = {
-                userId: user.uid,
-                date: new Date(),
-                pattern: preset.pattern,
-                completedRepetitions: repetition,
-                durationSeconds: preset.pattern.totalDurationSeconds,
-                moodBefore,
-                moodAfter,
-            };
-
-            await mentalService.createBreathingSession(session);
-            await mentalService.updateMentalHealthStats(user.uid, new Date());
-            onComplete(moodAfter);
+            setLoading(true);
+            setError(null);
+            await mentalService.logBreathingSession(user.uid, 30); // 30 seconds
+            onComplete();
         } catch (err) {
-            console.error('Error saving breathing session:', err);
+            console.error('Error logging breathing session:', err);
+            setError('Failed to save breathing session');
+        } finally {
+            setLoading(false);
         }
     };
 
-    if (showMoodAfter) {
-        return (
-            <div className="space-y-8 text-center">
-                <h2 className="text-2xl font-semibold">Great job!</h2>
-                <p className="text-muted-foreground">How do you feel now?</p>
+    const getPhaseInstruction = () => {
+        switch (phase) {
+            case 'inhale':
+                return 'Breathe in slowly...';
+            case 'hold':
+                return 'Hold your breath...';
+            case 'exhale':
+                return 'Breathe out slowly...';
+        }
+    };
 
-                <div className="flex justify-center gap-4">
-                    {[1, 2, 3, 4, 5].map((level) => (
-                        <button
-                            key={level}
-                            onClick={() => {
-                                setMoodAfter(level as MoodLevel);
-                                handleComplete();
-                            }}
-                            className={`flex flex-col items-center p-4 rounded-lg transition-colors ${moodAfter === level ? 'bg-primary/10 text-primary' : 'hover:bg-primary/5'
-                                }`}
-                        >
-                            <span className="text-3xl">
-                                {level === 1 ? '😢' :
-                                    level === 2 ? '😕' :
-                                        level === 3 ? '😐' :
-                                            level === 4 ? '🙂' : '😊'}
-                            </span>
-                        </button>
-                    ))}
+    const getPhaseAnimation = () => {
+        switch (phase) {
+            case 'inhale':
+                return 'scale-110 transition-transform duration-4000';
+            case 'hold':
+                return 'scale-110';
+            case 'exhale':
+                return 'scale-100 transition-transform duration-4000';
+        }
+    };
+
+    if (error) {
+        return (
+            <div className="text-center space-y-4 py-12">
+                <div className="bg-red-50 text-red-700 p-4 rounded-lg">
+                    {error}
                 </div>
+                <Button onClick={() => setError(null)}>
+                    Try Again
+                </Button>
+            </div>
+        );
+    }
+
+    if (!isActive) {
+        return (
+            <div className="text-center space-y-6 py-12">
+                <h2 className="text-2xl font-bold">Let's Take a Moment to Breathe</h2>
+                <p className="text-gray-600">
+                    Take 30 seconds to follow this breathing exercise. It will help you feel more calm and centered.
+                </p>
+                <Button onClick={handleStart} size="lg" disabled={loading}>
+                    Start Breathing Exercise
+                </Button>
             </div>
         );
     }
 
     return (
-        <div className="space-y-8">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h2 className="text-2xl font-semibold">{preset.name}</h2>
-                    <p className="text-muted-foreground">
-                        Round {repetition} of {preset.pattern.repetitions}
-                    </p>
+        <div className="text-center space-y-8 py-12">
+            <h2 className="text-2xl font-bold">Breathing Exercise</h2>
+
+            <div className="relative">
+                <div className={`
+                    w-48 h-48 mx-auto rounded-full bg-primary/10 
+                    flex items-center justify-center
+                    ${getPhaseAnimation()}
+                `}>
+                    <div className="w-32 h-32 rounded-full bg-primary/20 flex items-center justify-center">
+                        <span className="text-4xl font-bold">{timeLeft}</span>
+                    </div>
                 </div>
-                <Button variant="outline" onClick={onCancel}>
-                    End Session
-                </Button>
             </div>
 
-            {/* Breathing Animation */}
-            <div className="flex flex-col items-center justify-center py-16">
-                <div
-                    ref={circleRef}
-                    className="w-48 h-48 rounded-full bg-primary/10 flex items-center justify-center text-4xl"
-                >
-                    {timeLeft}
+            <div className="space-y-4">
+                <p className="text-xl font-medium">{getPhaseInstruction()}</p>
+                <div className="h-2 bg-gray-200 rounded-full max-w-md mx-auto">
+                    <div
+                        className="h-full bg-primary rounded-full transition-all duration-1000"
+                        style={{
+                            width: `${(timeLeft / 30) * 100}%`
+                        }}
+                    />
                 </div>
-                <p className="mt-8 text-xl font-medium">
-                    {phase === 'inhale' ? 'Inhale...' :
-                        phase === 'holdInhale' ? 'Hold...' :
-                            phase === 'exhale' ? 'Exhale...' : 'Hold...'}
-                </p>
-            </div>
-
-            {/* Controls */}
-            <div className="flex justify-center">
-                <Button
-                    variant="outline"
-                    onClick={() => setIsPaused(!isPaused)}
-                >
-                    {isPaused ? 'Resume' : 'Pause'}
-                </Button>
             </div>
         </div>
     );

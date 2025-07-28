@@ -20,7 +20,11 @@ const fitnessLevels: { value: FitnessLevel; label: string }[] = [
     { value: 'expert', label: 'Expert' },
 ];
 
-export function ProfileEditor() {
+interface ProfileEditorProps {
+    onClose?: () => void;
+}
+
+export function ProfileEditor({ onClose }: ProfileEditorProps) {
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -82,191 +86,201 @@ export function ProfileEditor() {
     }
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-8 p-6">
-            <div className="space-y-2">
-                <h2 className="text-2xl font-semibold">Profile Settings</h2>
-                <p className="text-muted-foreground">Update your personal information and preferences</p>
+        <div className="p-6">
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold">Edit Profile</h2>
+                {onClose && (
+                    <Button variant="ghost" onClick={onClose}>
+                        Close
+                    </Button>
+                )}
             </div>
-
-            {error && (
-                <div className="bg-destructive/10 text-destructive text-sm p-4 rounded-lg border border-destructive/20">
-                    {error}
+            <form onSubmit={handleSubmit} className="space-y-8 p-6">
+                <div className="space-y-2">
+                    <h2 className="text-2xl font-semibold">Profile Settings</h2>
+                    <p className="text-muted-foreground">Update your personal information and preferences</p>
                 </div>
-            )}
 
-            {success && (
-                <div className="bg-green-50 text-green-600 text-sm p-4 rounded-lg border border-green-200">
-                    Profile updated successfully!
-                </div>
-            )}
-
-            <div className="grid gap-6">
-                <div className="grid gap-4">
-                    <h3 className="text-lg font-medium">Personal Information</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">First Name</label>
-                            <input
-                                type="text"
-                                value={profile.personalInfo.firstName || ''}
-                                onChange={(e) => setProfile(prev => ({
-                                    ...prev!,
-                                    personalInfo: { ...prev!.personalInfo, firstName: e.target.value }
-                                }))}
-                                className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-primary/50"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Last Name</label>
-                            <input
-                                type="text"
-                                value={profile.personalInfo.lastName || ''}
-                                onChange={(e) => setProfile(prev => ({
-                                    ...prev!,
-                                    personalInfo: { ...prev!.personalInfo, lastName: e.target.value }
-                                }))}
-                                className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-primary/50"
-                            />
-                        </div>
+                {error && (
+                    <div className="bg-destructive/10 text-destructive text-sm p-4 rounded-lg border border-destructive/20">
+                        {error}
                     </div>
-                </div>
+                )}
 
-                <div className="grid gap-4">
-                    <h3 className="text-lg font-medium">Fitness Goals</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        {fitnessGoals.map((goal) => (
-                            <Button
-                                key={goal.value}
-                                type="button"
-                                variant={profile.fitnessGoals.includes(goal.value) ? 'default' : 'outline'}
-                                onClick={() => setProfile(prev => ({
-                                    ...prev!,
-                                    fitnessGoals: prev!.fitnessGoals.includes(goal.value)
-                                        ? prev!.fitnessGoals.filter(g => g !== goal.value)
-                                        : [...prev!.fitnessGoals, goal.value]
-                                }))}
-                                className="w-full justify-start"
-                            >
-                                {goal.label}
-                            </Button>
-                        ))}
+                {success && (
+                    <div className="bg-green-50 text-green-600 text-sm p-4 rounded-lg border border-green-200">
+                        Profile updated successfully!
                     </div>
-                </div>
+                )}
 
-                <div className="grid gap-4">
-                    <h3 className="text-lg font-medium">Fitness Level</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        {fitnessLevels.map((level) => (
-                            <Button
-                                key={level.value}
-                                type="button"
-                                variant={profile.fitnessLevel === level.value ? 'default' : 'outline'}
-                                onClick={() => setProfile(prev => ({
-                                    ...prev!,
-                                    fitnessLevel: level.value
-                                }))}
-                                className="w-full justify-start"
-                            >
-                                {level.label}
-                            </Button>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="grid gap-4">
-                    <h3 className="text-lg font-medium">Preferences</h3>
+                <div className="grid gap-6">
                     <div className="grid gap-4">
-                        <div className="flex items-center space-x-2">
-                            <input
-                                type="checkbox"
-                                id="workoutReminders"
-                                checked={profile.preferences.workoutReminders}
-                                onChange={(e) => setProfile(prev => ({
-                                    ...prev!,
-                                    preferences: { ...prev!.preferences, workoutReminders: e.target.checked }
-                                }))}
-                                className="rounded border-gray-300 text-primary focus:ring-primary"
-                            />
-                            <label htmlFor="workoutReminders" className="text-sm font-medium">
-                                Enable workout reminders
-                            </label>
-                        </div>
-                        {profile.preferences.workoutReminders && (
+                        <h3 className="text-lg font-medium">Personal Information</h3>
+                        <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium">Reminder Time</label>
+                                <label className="text-sm font-medium">First Name</label>
                                 <input
-                                    type="time"
-                                    value={profile.preferences.reminderTime || '09:00'}
+                                    type="text"
+                                    value={profile.personalInfo.firstName || ''}
                                     onChange={(e) => setProfile(prev => ({
                                         ...prev!,
-                                        preferences: { ...prev!.preferences, reminderTime: e.target.value }
+                                        personalInfo: { ...prev!.personalInfo, firstName: e.target.value }
                                     }))}
                                     className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-primary/50"
                                 />
                             </div>
-                        )}
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Weekly Workout Goal</label>
-                            <input
-                                type="number"
-                                min="1"
-                                max="7"
-                                value={profile.preferences.weeklyGoal}
-                                onChange={(e) => setProfile(prev => ({
-                                    ...prev!,
-                                    preferences: { ...prev!.preferences, weeklyGoal: parseInt(e.target.value) }
-                                }))}
-                                className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-primary/50"
-                            />
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Last Name</label>
+                                <input
+                                    type="text"
+                                    value={profile.personalInfo.lastName || ''}
+                                    onChange={(e) => setProfile(prev => ({
+                                        ...prev!,
+                                        personalInfo: { ...prev!.personalInfo, lastName: e.target.value }
+                                    }))}
+                                    className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-primary/50"
+                                />
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Preferred Workout Duration (minutes)</label>
-                            <input
-                                type="number"
-                                min="5"
-                                step="5"
-                                value={profile.preferences.preferredWorkoutDuration}
-                                onChange={(e) => setProfile(prev => ({
-                                    ...prev!,
-                                    preferences: { ...prev!.preferences, preferredWorkoutDuration: parseInt(e.target.value) }
-                                }))}
-                                className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-primary/50"
-                            />
+                    </div>
+
+                    <div className="grid gap-4">
+                        <h3 className="text-lg font-medium">Fitness Goals</h3>
+                        <div className="grid grid-cols-2 gap-4">
+                            {fitnessGoals.map((goal) => (
+                                <Button
+                                    key={goal.value}
+                                    type="button"
+                                    variant={profile.fitnessGoals.includes(goal.value) ? 'default' : 'outline'}
+                                    onClick={() => setProfile(prev => ({
+                                        ...prev!,
+                                        fitnessGoals: prev!.fitnessGoals.includes(goal.value)
+                                            ? prev!.fitnessGoals.filter(g => g !== goal.value)
+                                            : [...prev!.fitnessGoals, goal.value]
+                                    }))}
+                                    className="w-full justify-start"
+                                >
+                                    {goal.label}
+                                </Button>
+                            ))}
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Measurement Unit</label>
-                            <select
-                                value={profile.preferences.measurementUnit}
-                                onChange={(e) => setProfile(prev => ({
-                                    ...prev!,
-                                    preferences: { ...prev!.preferences, measurementUnit: e.target.value as 'metric' | 'imperial' }
-                                }))}
-                                className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-primary/50"
-                            >
-                                <option value="metric">Metric (kg, cm)</option>
-                                <option value="imperial">Imperial (lb, in)</option>
-                            </select>
+                    </div>
+
+                    <div className="grid gap-4">
+                        <h3 className="text-lg font-medium">Fitness Level</h3>
+                        <div className="grid grid-cols-2 gap-4">
+                            {fitnessLevels.map((level) => (
+                                <Button
+                                    key={level.value}
+                                    type="button"
+                                    variant={profile.fitnessLevel === level.value ? 'default' : 'outline'}
+                                    onClick={() => setProfile(prev => ({
+                                        ...prev!,
+                                        fitnessLevel: level.value
+                                    }))}
+                                    className="w-full justify-start"
+                                >
+                                    {level.label}
+                                </Button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="grid gap-4">
+                        <h3 className="text-lg font-medium">Preferences</h3>
+                        <div className="grid gap-4">
+                            <div className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    id="workoutReminders"
+                                    checked={profile.preferences.workoutReminders}
+                                    onChange={(e) => setProfile(prev => ({
+                                        ...prev!,
+                                        preferences: { ...prev!.preferences, workoutReminders: e.target.checked }
+                                    }))}
+                                    className="rounded border-gray-300 text-primary focus:ring-primary"
+                                />
+                                <label htmlFor="workoutReminders" className="text-sm font-medium">
+                                    Enable workout reminders
+                                </label>
+                            </div>
+                            {profile.preferences.workoutReminders && (
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Reminder Time</label>
+                                    <input
+                                        type="time"
+                                        value={profile.preferences.reminderTime || '09:00'}
+                                        onChange={(e) => setProfile(prev => ({
+                                            ...prev!,
+                                            preferences: { ...prev!.preferences, reminderTime: e.target.value }
+                                        }))}
+                                        className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-primary/50"
+                                    />
+                                </div>
+                            )}
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Weekly Workout Goal</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="7"
+                                    value={profile.preferences.weeklyGoal}
+                                    onChange={(e) => setProfile(prev => ({
+                                        ...prev!,
+                                        preferences: { ...prev!.preferences, weeklyGoal: parseInt(e.target.value) }
+                                    }))}
+                                    className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-primary/50"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Preferred Workout Duration (minutes)</label>
+                                <input
+                                    type="number"
+                                    min="5"
+                                    step="5"
+                                    value={profile.preferences.preferredWorkoutDuration}
+                                    onChange={(e) => setProfile(prev => ({
+                                        ...prev!,
+                                        preferences: { ...prev!.preferences, preferredWorkoutDuration: parseInt(e.target.value) }
+                                    }))}
+                                    className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-primary/50"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Measurement Unit</label>
+                                <select
+                                    value={profile.preferences.measurementUnit}
+                                    onChange={(e) => setProfile(prev => ({
+                                        ...prev!,
+                                        preferences: { ...prev!.preferences, measurementUnit: e.target.value as 'metric' | 'imperial' }
+                                    }))}
+                                    className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-primary/50"
+                                >
+                                    <option value="metric">Metric (kg, cm)</option>
+                                    <option value="imperial">Imperial (lb, in)</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div className="flex justify-end space-x-4">
-                <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => loadProfile()}
-                    disabled={saving}
-                >
-                    Reset
-                </Button>
-                <Button
-                    type="submit"
-                    disabled={saving}
-                >
-                    {saving ? 'Saving...' : 'Save Changes'}
-                </Button>
-            </div>
-        </form>
+                <div className="flex justify-end space-x-4">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => loadProfile()}
+                        disabled={saving}
+                    >
+                        Reset
+                    </Button>
+                    <Button
+                        type="submit"
+                        disabled={saving}
+                    >
+                        {saving ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                </div>
+            </form>
+        </div>
     );
 } 

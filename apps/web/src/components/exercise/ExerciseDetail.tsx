@@ -1,37 +1,59 @@
 import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { Button } from '@dreamme/ui';
+import { useAuth } from '../../lib/auth';
 import { exerciseService } from '../../services/exerciseService';
-import type { Exercise, WorkoutLog } from '../../types/exercise';
-import { WorkoutLogForm } from './WorkoutLogForm';
+import type { DailyExercise, Exercise } from '../../types/exercise';
 
-interface ExerciseDetailProps {
-    exerciseId: string;
-    onClose: () => void;
+function YouTubeVideo({ videoId, title }: { videoId: string; title: string }) {
+    return (
+        <div className="aspect-video rounded-xl overflow-hidden bg-black/20 backdrop-blur-sm">
+            <iframe
+                src={`https://www.youtube.com/embed/${videoId}`}
+                title={title}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+            />
+        </div>
+    );
 }
 
-export function ExerciseDetail({ exerciseId, onClose }: ExerciseDetailProps) {
-    const [exercise, setExercise] = useState<Exercise | null>(null);
-    const [workoutLogs, setWorkoutLogs] = useState<WorkoutLog[]>([]);
+export function ExerciseDetail() {
+    const { exerciseId } = useParams<{ exerciseId: string }>();
+    const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [showLogForm, setShowLogForm] = useState(false);
+    const [dailyExercise, setDailyExercise] = useState<DailyExercise | null>(null);
+    const [exerciseDetails, setExerciseDetails] = useState<Exercise | null>(null);
 
-    const loadExerciseData = async () => {
-        setLoading(true);
-        setError(null);
+    useEffect(() => {
+        loadExercise();
+    }, [exerciseId]);
+
+    const loadExercise = async () => {
+        if (!exerciseId || !user) return;
 
         try {
-            const [exerciseData, logs] = await Promise.all([
-                exerciseService.getExercise(exerciseId),
-                exerciseService.getWorkoutLogs(exerciseId),
-            ]);
+            setLoading(true);
+            setError(null);
 
-            if (!exerciseData) {
-                throw new Error('Exercise not found');
+            // Get daily exercise
+            const dailyWorkout = await exerciseService.getDailyWorkout(user.uid);
+            const exercise = dailyWorkout.exercises.find((e, i) => i.toString() === exerciseId);
+
+            if (!exercise) {
+                setError('Exercise not found');
+                return;
             }
 
-            setExercise(exerciseData);
-            setWorkoutLogs(logs);
+            setDailyExercise(exercise);
+
+            // Get full exercise details
+            const details = await exerciseService.getExerciseById(exercise.exerciseId);
+            if (details) {
+                setExerciseDetails(details);
+            }
         } catch (err) {
             console.error('Error loading exercise:', err);
             setError('Failed to load exercise details');
@@ -40,9 +62,21 @@ export function ExerciseDetail({ exerciseId, onClose }: ExerciseDetailProps) {
         }
     };
 
-    useEffect(() => {
-        loadExerciseData();
-    }, [exerciseId]);
+    const handleComplete = async () => {
+        if (!exerciseId || !user) return;
+
+        try {
+            setLoading(true);
+            setError(null);
+            await exerciseService.markExerciseComplete(user.uid, exerciseId);
+            await loadExercise(); // Reload exercise to get updated status
+        } catch (err) {
+            console.error('Error completing exercise:', err);
+            setError('Failed to mark exercise as complete');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -52,169 +86,121 @@ export function ExerciseDetail({ exerciseId, onClose }: ExerciseDetailProps) {
         );
     }
 
-    if (error || !exercise) {
+    if (error) {
         return (
-            <div className="p-8 text-center">
-                <p className="text-destructive mb-4">{error || 'Exercise not found'}</p>
-                <Button onClick={onClose}>Go Back</Button>
+            <div className="bg-red-500/10 text-red-200 p-4 rounded-lg border border-red-500/20">
+                {error}
+                <Button onClick={() => setError(null)} variant="outline" className="mt-2">
+                    Try Again
+                </Button>
             </div>
         );
     }
 
-    if (showLogForm) {
+    if (!dailyExercise || !exerciseDetails) {
         return (
-            <WorkoutLogForm
-                exercise={exercise}
-                onClose={() => setShowLogForm(false)}
-                onSuccess={() => {
-                    loadExerciseData();
-                    setShowLogForm(false);
-                }}
-            />
+            <div className="text-center py-8">
+                <p className="text-white/60">Exercise not found</p>
+            </div>
         );
     }
 
     return (
-        <div className="space-y-8">
-            {/* Header */}
-            <div className="flex items-start justify-between">
+        <div className="max-w-4xl mx-auto space-y-8">
+            <div className="flex justify-between items-start">
                 <div>
-                    <h2 className="text-2xl font-semibold mb-2">{exercise.name}</h2>
-                    <p className="text-muted-foreground">{exercise.description}</p>
+                    <h1 className="text-3xl font-bold text-white">{dailyExercise.name}</h1>
+                    <p className="text-white/60 mt-2">{dailyExercise.description}</p>
                 </div>
-                <Button variant="outline" onClick={onClose}>Close</Button>
-            </div>
-
-            {/* Video Section */}
-            {exercise.youtubeVideoId && (
-                <div className="aspect-video rounded-lg overflow-hidden bg-gray-100">
-                    <iframe
-                        src={`https://www.youtube.com/embed/${exercise.youtubeVideoId}`}
-                        title={`${exercise.name} demonstration`}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        className="w-full h-full"
-                    />
-                </div>
-            )}
-
-            {/* Instructions and Tips */}
-            <div className="grid md:grid-cols-2 gap-8">
-                <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Instructions</h3>
-                    <ol className="list-decimal list-inside space-y-2">
-                        {exercise.instructions.map((instruction, index) => (
-                            <li key={index} className="text-sm text-muted-foreground">
-                                {instruction}
-                            </li>
-                        ))}
-                    </ol>
-                </div>
-
-                <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Tips</h3>
-                    <ul className="list-disc list-inside space-y-2">
-                        {exercise.tips.map((tip, index) => (
-                            <li key={index} className="text-sm text-muted-foreground">
-                                {tip}
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            </div>
-
-            {/* Exercise Information */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="p-4 bg-primary/5 rounded-lg">
-                    <h4 className="text-sm font-medium mb-1">Duration</h4>
-                    <p className="text-2xl font-semibold">{exercise.estimatedDuration}m</p>
-                </div>
-                <div className="p-4 bg-primary/5 rounded-lg">
-                    <h4 className="text-sm font-medium mb-1">Calories</h4>
-                    <p className="text-2xl font-semibold">
-                        {exercise.caloriesBurnedPerMinute * exercise.estimatedDuration}
-                    </p>
-                </div>
-                <div className="p-4 bg-primary/5 rounded-lg">
-                    <h4 className="text-sm font-medium mb-1">Equipment</h4>
-                    <div className="flex flex-wrap gap-1">
-                        {exercise.equipment.map((item) => (
-                            <span
-                                key={item}
-                                className="text-xs px-2 py-1 bg-secondary/10 text-secondary rounded-full"
-                            >
-                                {item}
-                            </span>
-                        ))}
-                    </div>
-                </div>
-                <div className="p-4 bg-primary/5 rounded-lg">
-                    <h4 className="text-sm font-medium mb-1">Difficulty</h4>
-                    <span className="text-xs px-2 py-1 bg-secondary/10 text-secondary rounded-full">
-                        {exercise.difficulty}
-                    </span>
-                </div>
-            </div>
-
-            {/* Workout History */}
-            {workoutLogs.length > 0 && (
-                <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Workout History</h3>
-                    <div className="space-y-2">
-                        {workoutLogs.map((log) => (
-                            <div
-                                key={log.id}
-                                className="p-4 bg-white rounded-lg shadow-sm"
-                            >
-                                <div className="flex justify-between items-start mb-2">
-                                    <div>
-                                        <p className="text-sm font-medium">
-                                            {new Date(log.date).toLocaleDateString()}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                            Duration: {log.duration} minutes
-                                        </p>
-                                    </div>
-                                    {log.rating && (
-                                        <div className="flex items-center">
-                                            {Array.from({ length: log.rating }).map((_, i) => (
-                                                <span key={i} className="text-yellow-400">★</span>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                                {log.sets.map((set, index) => (
-                                    <div
-                                        key={index}
-                                        className="text-sm text-muted-foreground"
-                                    >
-                                        Set {index + 1}:
-                                        {set.reps && ` ${set.reps} reps`}
-                                        {set.weight && ` @ ${set.weight}kg`}
-                                        {set.duration && ` for ${set.duration}s`}
-                                        {set.distance && ` ${set.distance}m`}
-                                    </div>
-                                ))}
-                                {log.notes && (
-                                    <p className="mt-2 text-sm text-muted-foreground italic">
-                                        {log.notes}
-                                    </p>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Action Buttons */}
-            <div className="flex justify-end space-x-4">
                 <Button
-                    variant="outline"
-                    onClick={() => setShowLogForm(true)}
+                    onClick={handleComplete}
+                    disabled={dailyExercise.completed}
+                    variant={dailyExercise.completed ? 'outline' : 'primary'}
                 >
-                    Log Workout
+                    {dailyExercise.completed ? 'Completed' : 'Mark as Complete'}
                 </Button>
-                <Button>Start Exercise</Button>
+            </div>
+
+            {exerciseDetails.youtubeVideoId && (
+                <YouTubeVideo videoId={exerciseDetails.youtubeVideoId} title={dailyExercise.name} />
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-6">
+                    <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+                        <h2 className="text-xl font-semibold mb-4 text-white">Instructions</h2>
+                        <ol className="list-decimal list-inside space-y-2">
+                            {exerciseDetails.instructions?.map((instruction, index) => (
+                                <li key={index} className="text-white/80">{instruction}</li>
+                            ))}
+                        </ol>
+                    </div>
+
+                    {exerciseDetails.tips && exerciseDetails.tips.length > 0 && (
+                        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+                            <h2 className="text-xl font-semibold mb-4 text-white">Tips</h2>
+                            <ul className="list-disc list-inside space-y-2">
+                                {exerciseDetails.tips.map((tip, index) => (
+                                    <li key={index} className="text-white/80">{tip}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                </div>
+
+                <div className="space-y-6">
+                    <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+                        <h2 className="text-xl font-semibold mb-4 text-white">Exercise Details</h2>
+                        <dl className="space-y-4">
+                            <div>
+                                <dt className="text-sm text-white/60">Type</dt>
+                                <dd className="font-medium text-white">{exerciseDetails.type}</dd>
+                            </div>
+                            <div>
+                                <dt className="text-sm text-white/60">Duration</dt>
+                                <dd className="font-medium text-white">{exerciseDetails.duration}</dd>
+                            </div>
+                            <div>
+                                <dt className="text-sm text-white/60">Difficulty</dt>
+                                <dd className="font-medium capitalize text-white">{exerciseDetails.difficulty}</dd>
+                            </div>
+                            {exerciseDetails.muscleGroups && (
+                                <div>
+                                    <dt className="text-sm text-white/60">Muscle Groups</dt>
+                                    <dd className="font-medium text-white">{exerciseDetails.muscleGroups.join(', ')}</dd>
+                                </div>
+                            )}
+                            {exerciseDetails.equipment && (
+                                <div>
+                                    <dt className="text-sm text-white/60">Equipment Needed</dt>
+                                    <dd className="font-medium text-white">{exerciseDetails.equipment.join(', ')}</dd>
+                                </div>
+                            )}
+                            {exerciseDetails.caloriesBurnedPerMinute && (
+                                <div>
+                                    <dt className="text-sm text-white/60">Estimated Calories</dt>
+                                    <dd className="font-medium text-white">
+                                        {exerciseDetails.caloriesBurnedPerMinute * parseInt(exerciseDetails.duration)} calories
+                                    </dd>
+                                </div>
+                            )}
+                        </dl>
+                    </div>
+
+                    <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+                        <h2 className="text-xl font-semibold mb-4 text-white">Recommended Sets</h2>
+                        <div className="space-y-2">
+                            <div className="flex justify-between items-center">
+                                <span className="text-white/60">Sets</span>
+                                <span className="font-medium text-white">{dailyExercise.sets}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-white/60">Reps per Set</span>
+                                <span className="font-medium text-white">{dailyExercise.reps}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );

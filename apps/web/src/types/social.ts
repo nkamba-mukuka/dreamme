@@ -3,12 +3,16 @@ import type { JournalEntry } from './mental';
 
 export type PrivacyLevel = 'public' | 'friends' | 'private';
 
+export type WorkoutType = 'yoga' | 'running' | 'weightlifting' | 'hiit' | 'cycling' | 'swimming';
+export type Availability = 'morning' | 'afternoon' | 'evening' | 'weekend';
+export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
+
 export interface PublicProfile {
     userId: string;
     username: string;
     displayName: string;
     bio?: string;
-    avatarUrl?: string;
+    photoURL?: string;
     location?: string;
     websiteUrl?: string;
     socialLinks?: {
@@ -16,6 +20,13 @@ export interface PublicProfile {
         twitter?: string;
         facebook?: string;
     };
+    workoutPreferences?: {
+        types: WorkoutType[];
+        availability: Availability[];
+        experienceLevel: ExperienceLevel;
+    };
+    interests?: string[];
+    isFollowing?: boolean;
     stats: {
         totalWorkouts: number;
         workoutStreak: number;
@@ -182,5 +193,8 @@ export interface ProfileSearchParams {
     achievementCategory?: AchievementCategory;
     minWorkouts?: number;
     maxWorkouts?: number;
-    sortBy?: 'recent' | 'workouts' | 'streak' | 'achievements';
+    sortBy?: 'recent' | 'workouts' | 'streak' | 'achievements' | 'stats.totalWorkouts';
+    workoutTypes?: WorkoutType[];
+    availability?: Availability[];
+    experienceLevel?: ExperienceLevel;
 } 

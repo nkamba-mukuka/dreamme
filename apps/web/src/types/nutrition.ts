@@ -4,14 +4,17 @@ export interface Macros {
     fat: number; // in grams
 }
 
-export interface NutritionInfo extends Macros {
+export interface NutritionInfo {
     calories: number;
-    fiber: number; // in grams
-    sugar: number; // in grams
-    sodium: number; // in mg
-    cholesterol: number; // in mg
-    saturatedFat: number; // in grams
-    servingSize: number; // in grams
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiber: number;
+    sugar: number;
+    sodium: number;
+    cholesterol: number;
+    saturatedFat: number;
+    servingSize: number;
     servings: number;
 }
 
@@ -41,20 +44,22 @@ export type CuisineType =
 export interface Recipe {
     id: string;
     name: string;
+    type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
     description: string;
-    ingredients: Ingredient[];
-    instructions: string[];
-    prepTime: number; // in minutes
-    cookTime: number; // in minutes
-    servings: number;
-    nutrition: NutritionInfo;
-    dietaryRestrictions: DietaryRestriction[];
-    cuisineType: CuisineType;
+    recipe: string[];
+    ingredients: string[];
+    nutritionInfo: NutritionInfo;
+    imageUrl: string;
+    videoUrl?: string;
+    preparationTime: number;
     difficulty: 'easy' | 'medium' | 'hard';
-    imageUrl?: string;
-    createdBy: string; // user ID
+    servings: number;
     createdAt: Date;
     updatedAt: Date;
+}
+
+export interface Meal extends Recipe {
+    // Additional meal-specific properties can be added here
 }
 
 export interface Ingredient {
@@ -107,26 +112,55 @@ export interface LoggedMeal {
 }
 
 export interface NutritionGoals {
+    id: string;
     userId: string;
     dailyCalories: number;
-    macros: Macros;
+    macros: {
+        protein: number; // in grams
+        carbs: number; // in grams
+        fat: number; // in grams
+    };
     waterIntake: number; // in ml
-    dietaryRestrictions: DietaryRestriction[];
-    excludedIngredients: string[];
+    dietaryRestrictions: string[];
+    preferences: {
+        cuisineTypes: string[];
+        excludedIngredients: string[];
+        mealSize: 'small' | 'medium' | 'large';
+    };
     createdAt: Date;
     updatedAt: Date;
 }
 
 export interface NutritionProgress {
+    id: string;
     userId: string;
     date: Date;
-    planned: NutritionInfo;
-    actual: NutritionInfo;
-    waterIntake: {
-        planned: number;
-        actual: number;
+    meals: {
+        mealId: string;
+        type: Meal['type'];
+        completed: boolean;
+        rating?: number; // 1-5
+        notes?: string;
+    }[];
+    totalCalories: number;
+    macros: {
+        protein: number;
+        carbs: number;
+        fat: number;
     };
-    adherenceRate: number; // 0-100%
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+export interface DailyMealPlan {
+    id: string;
+    userId: string;
+    date: Date;
+    breakfast: Meal;
+    lunch: Meal;
+    dinner: Meal;
+    snacks: Meal[];
+    completed: boolean;
     createdAt: Date;
     updatedAt: Date;
 }

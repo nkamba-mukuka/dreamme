@@ -9,10 +9,8 @@ build
 out
 
 # Environment files
-
 .env.*
 !.env.example
-
 # IDE and editor files
 .vscode/*
 !.vscode/extensions.json

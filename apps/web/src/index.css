@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -59,6 +61,19 @@
   background: rgba(255, 255, 255, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.5);
   backdrop-filter: blur(5px);
+}
+
+.dreamme-title {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  background: linear-gradient(to right, #00ffff, #00ff87);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 20px rgba(0, 255, 255, 0.5),
+               0 0 40px rgba(0, 255, 255, 0.3),
+               0 0 60px rgba(0, 255, 255, 0.1);
+  letter-spacing: 2px;
 }
 
 @layer base {

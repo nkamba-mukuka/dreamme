@@ -1,5 +1,26 @@
 export type MoodLevel = 1 | 2 | 3 | 4 | 5;
 
+export type MoodType = 'great' | 'good' | 'okay' | 'bad' | 'terrible';
+
+export interface MoodEntry {
+    id: string;
+    userId: string;
+    mood: MoodType;
+    journalEntry?: string;
+    date: Date;
+    completedBreathing: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+export interface MotivationalQuote {
+    id: string;
+    quote: string;
+    author: string;
+    category: string;
+    imageUrl?: string;
+}
+
 export type MoodTag =
     | 'happy'
     | 'excited'
@@ -92,12 +113,12 @@ export interface Motivation {
 export interface MentalHealthStats {
     userId: string;
     date: Date;
-    averageMood: number;
     moodTrend: 'improving' | 'stable' | 'declining';
-    commonMoodTags: MoodTag[];
+    averageMood: number;
     journalStreak: number;
     breathingMinutes: number;
     activeMotivations: number;
+    commonMoodTags: MoodTag[];
     createdAt: Date;
     updatedAt: Date;
 }

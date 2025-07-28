@@ -44,16 +44,16 @@ export function MealForm({ onSubmit, onCancel }: MealFormProps) {
                 name: selectedRecipe.name,
                 servings,
                 nutrition: {
-                    ...selectedRecipe.nutrition,
-                    calories: selectedRecipe.nutrition.calories * (servings / selectedRecipe.nutrition.servings),
-                    protein: selectedRecipe.nutrition.protein * (servings / selectedRecipe.nutrition.servings),
-                    carbs: selectedRecipe.nutrition.carbs * (servings / selectedRecipe.nutrition.servings),
-                    fat: selectedRecipe.nutrition.fat * (servings / selectedRecipe.nutrition.servings),
-                    fiber: selectedRecipe.nutrition.fiber * (servings / selectedRecipe.nutrition.servings),
-                    sugar: selectedRecipe.nutrition.sugar * (servings / selectedRecipe.nutrition.servings),
-                    sodium: selectedRecipe.nutrition.sodium * (servings / selectedRecipe.nutrition.servings),
-                    cholesterol: selectedRecipe.nutrition.cholesterol * (servings / selectedRecipe.nutrition.servings),
-                    saturatedFat: selectedRecipe.nutrition.saturatedFat * (servings / selectedRecipe.nutrition.servings),
+                    ...selectedRecipe.nutritionInfo,
+                    calories: selectedRecipe.nutritionInfo.calories * (servings / selectedRecipe.servings),
+                    protein: selectedRecipe.nutritionInfo.protein * (servings / selectedRecipe.servings),
+                    carbs: selectedRecipe.nutritionInfo.carbs * (servings / selectedRecipe.servings),
+                    fat: selectedRecipe.nutritionInfo.fat * (servings / selectedRecipe.servings),
+                    fiber: selectedRecipe.nutritionInfo.fiber * (servings / selectedRecipe.servings),
+                    sugar: selectedRecipe.nutritionInfo.sugar * (servings / selectedRecipe.servings),
+                    sodium: selectedRecipe.nutritionInfo.sodium * (servings / selectedRecipe.servings),
+                    cholesterol: selectedRecipe.nutritionInfo.cholesterol * (servings / selectedRecipe.servings),
+                    saturatedFat: selectedRecipe.nutritionInfo.saturatedFat * (servings / selectedRecipe.servings),
                 },
                 time: new Date(),
             };
@@ -108,7 +108,7 @@ export function MealForm({ onSubmit, onCancel }: MealFormProps) {
                                 <div>
                                     <h3 className="font-semibold">{selectedRecipe.name}</h3>
                                     <p className="text-sm text-muted-foreground">
-                                        {selectedRecipe.nutrition.calories} cal per serving
+                                        {selectedRecipe.nutritionInfo.calories} cal per serving
                                     </p>
                                 </div>
                                 <Button
@@ -136,10 +136,10 @@ export function MealForm({ onSubmit, onCancel }: MealFormProps) {
                             <div className="bg-gray-50 p-4 rounded-lg space-y-2">
                                 <h4 className="font-medium">Nutrition per serving</h4>
                                 <div className="grid grid-cols-2 gap-4 text-sm">
-                                    <div>Calories: {selectedRecipe.nutrition.calories}</div>
-                                    <div>Protein: {selectedRecipe.nutrition.protein}g</div>
-                                    <div>Carbs: {selectedRecipe.nutrition.carbs}g</div>
-                                    <div>Fat: {selectedRecipe.nutrition.fat}g</div>
+                                    <div>Calories: {selectedRecipe.nutritionInfo.calories}</div>
+                                    <div>Protein: {selectedRecipe.nutritionInfo.protein}g</div>
+                                    <div>Carbs: {selectedRecipe.nutritionInfo.carbs}g</div>
+                                    <div>Fat: {selectedRecipe.nutritionInfo.fat}g</div>
                                 </div>
                             </div>
 
@@ -147,16 +147,16 @@ export function MealForm({ onSubmit, onCancel }: MealFormProps) {
                                 <h4 className="font-medium">Total nutrition</h4>
                                 <div className="grid grid-cols-2 gap-4 text-sm">
                                     <div>
-                                        Calories: {Math.round(selectedRecipe.nutrition.calories * servings)}
+                                        Calories: {Math.round(selectedRecipe.nutritionInfo.calories * servings)}
                                     </div>
                                     <div>
-                                        Protein: {Math.round(selectedRecipe.nutrition.protein * servings)}g
+                                        Protein: {Math.round(selectedRecipe.nutritionInfo.protein * servings)}g
                                     </div>
                                     <div>
-                                        Carbs: {Math.round(selectedRecipe.nutrition.carbs * servings)}g
+                                        Carbs: {Math.round(selectedRecipe.nutritionInfo.carbs * servings)}g
                                     </div>
                                     <div>
-                                        Fat: {Math.round(selectedRecipe.nutrition.fat * servings)}g
+                                        Fat: {Math.round(selectedRecipe.nutritionInfo.fat * servings)}g
                                     </div>
                                 </div>
                             </div>

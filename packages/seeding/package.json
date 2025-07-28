@@ -1,0 +1,16 @@
+{
+    "name": "@dreamme/seeding",
+    "version": "0.0.0",
+    "private": true,
+    "scripts": {
+        "seed": "ts-node src/seed.ts"
+    },
+    "dependencies": {
+        "firebase-admin": "^12.0.0"
+    },
+    "devDependencies": {
+        "typescript": "^5.0.0",
+        "@types/node": "^20.0.0",
+        "ts-node": "^10.9.2"
+    }
+}

@@ -1,0 +1,56 @@
+rules_version = '2';
+service firebase.storage {
+    match /b/{bucket}/o {
+        // Helper functions
+        function isSignedIn() {
+            return request.auth != null;
+        }
+
+        function isOwner(userId) {
+            return request.auth.uid == userId;
+        }
+
+        function isImage() {
+            return request.resource.contentType.matches('image/.*');
+        }
+
+        function isValidSize() {
+            return request.resource.size <= 5 * 1024 * 1024; // 5MB
+        }
+
+        // Profile pictures
+        match /profiles/{userId}/avatar.{ext} {
+            allow read: if true;
+            allow write: if isSignedIn() && isOwner(userId) && isImage() && isValidSize();
+        }
+
+        // Workout progress photos
+        match /workouts/{userId}/{progressId}.{ext} {
+            allow read: if true;
+            allow write: if isSignedIn() && isOwner(userId) && isImage() && isValidSize();
+        }
+
+        // Recipe images
+        match /recipes/{userId}/{recipeId}.{ext} {
+            allow read: if true;
+            allow write: if isSignedIn() && isOwner(userId) && isImage() && isValidSize();
+        }
+
+        // Post images
+        match /posts/{userId}/{postId}.{ext} {
+            allow read: if true;
+            allow write: if isSignedIn() && isOwner(userId) && isImage() && isValidSize();
+        }
+
+        // Achievement badges
+        match /achievements/{achievementId}.{ext} {
+            allow read: if true;
+            allow write: if false; // Only admin can write
+        }
+
+        // Default deny
+        match /{allPaths=**} {
+            allow read, write: if false;
+        }
+    }
+} 

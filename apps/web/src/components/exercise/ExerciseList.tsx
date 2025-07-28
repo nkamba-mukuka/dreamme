@@ -1,235 +1,217 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@dreamme/ui';
+import { useAuth } from '../../lib/auth';
 import { exerciseService } from '../../services/exerciseService';
-import type {
-    Exercise,
-    MuscleGroup,
-    Equipment,
-    ExerciseDifficulty,
-} from '../../types/exercise';
+import type { DailyWorkout, DailyExercise } from '../../types/exercise';
 
-const muscleGroups: { value: MuscleGroup; label: string }[] = [
-    { value: 'chest', label: 'Chest' },
-    { value: 'back', label: 'Back' },
-    { value: 'shoulders', label: 'Shoulders' },
-    { value: 'biceps', label: 'Biceps' },
-    { value: 'triceps', label: 'Triceps' },
-    { value: 'legs', label: 'Legs' },
-    { value: 'core', label: 'Core' },
-    { value: 'fullBody', label: 'Full Body' },
-];
+interface ExerciseListProps {
+    onExerciseComplete?: () => void;
+}
 
-const equipmentTypes: { value: Equipment; label: string }[] = [
-    { value: 'bodyweight', label: 'Bodyweight' },
-    { value: 'dumbbell', label: 'Dumbbell' },
-    { value: 'barbell', label: 'Barbell' },
-    { value: 'kettlebell', label: 'Kettlebell' },
-    { value: 'resistanceBand', label: 'Resistance Band' },
-    { value: 'machine', label: 'Machine' },
-    { value: 'cable', label: 'Cable' },
-    { value: 'other', label: 'Other' },
-];
-
-const difficultyLevels: { value: ExerciseDifficulty; label: string }[] = [
-    { value: 'beginner', label: 'Beginner' },
-    { value: 'intermediate', label: 'Intermediate' },
-    { value: 'advanced', label: 'Advanced' },
-];
-
-export function ExerciseList() {
-    const [exercises, setExercises] = useState<Exercise[]>([]);
+export function ExerciseList({ onExerciseComplete }: ExerciseListProps) {
+    const { user } = useAuth();
+    const [workout, setWorkout] = useState<DailyWorkout | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [completing, setCompleting] = useState<number | null>(null);
 
-    // Search and filter state
-    const [searchTerm, setSearchTerm] = useState('');
-    const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<MuscleGroup[]>([]);
-    const [selectedEquipment, setSelectedEquipment] = useState<Equipment[]>([]);
-    const [selectedDifficulty, setSelectedDifficulty] = useState<ExerciseDifficulty | null>(null);
+    useEffect(() => {
+        loadWorkout();
+    }, [user]);
 
-    // Load exercises with current filters
-    const loadExercises = async () => {
-        setLoading(true);
-        setError(null);
+    const loadWorkout = async () => {
+        if (!user) return;
 
         try {
-            const results = await exerciseService.searchExercises({
-                searchTerm: searchTerm || undefined,
-                muscleGroups: selectedMuscleGroups.length > 0 ? selectedMuscleGroups : undefined,
-                equipment: selectedEquipment.length > 0 ? selectedEquipment : undefined,
-                difficulty: selectedDifficulty || undefined,
-            });
-            setExercises(results);
+            setLoading(true);
+            setError(null);
+            console.log('Loading workout for user:', user.uid);
+            const dailyWorkout = await exerciseService.getDailyWorkout(user.uid);
+            console.log('Loaded workout:', dailyWorkout);
+            setWorkout(dailyWorkout);
         } catch (err) {
-            console.error('Error loading exercises:', err);
-            setError('Failed to load exercises');
+            console.error('Error loading workout:', err);
+            setError('Failed to load workout');
         } finally {
             setLoading(false);
         }
     };
 
-    // Load exercises on mount and when filters change
-    useEffect(() => {
-        loadExercises();
-    }, [searchTerm, selectedMuscleGroups, selectedEquipment, selectedDifficulty]);
+    const handleComplete = async (index: number) => {
+        if (!user || !workout) {
+            console.log('Cannot complete exercise - no user or workout', { user, workout });
+            return;
+        }
 
-    const handleMuscleGroupToggle = (value: MuscleGroup) => {
-        setSelectedMuscleGroups(prev =>
-            prev.includes(value)
-                ? prev.filter(g => g !== value)
-                : [...prev, value]
-        );
-    };
+        try {
+            console.log('Marking exercise complete:', { index, exercise: workout.exercises[index] });
+            setCompleting(index);
+            setError(null);
 
-    const handleEquipmentToggle = (value: Equipment) => {
-        setSelectedEquipment(prev =>
-            prev.includes(value)
-                ? prev.filter(e => e !== value)
-                : [...prev, value]
-        );
-    };
+            const result = await exerciseService.markExerciseComplete(user.uid, index.toString());
+            console.log('Exercise marked complete:', result);
 
-    const handleDifficultySelect = (value: ExerciseDifficulty | null) => {
-        setSelectedDifficulty(prev => prev === value ? null : value);
-    };
+            // Log the workout to update stats
+            const exercise = workout.exercises[index];
+            await exerciseService.logWorkout(user.uid, {
+                userId: user.uid,
+                exerciseId: exercise.exerciseId,
+                date: new Date(),
+                duration: exercise.duration,
+                sets: [],
+                notes: 'Completed via daily workout',
+                rating: 5
+            });
 
-    const clearFilters = () => {
-        setSearchTerm('');
-        setSelectedMuscleGroups([]);
-        setSelectedEquipment([]);
-        setSelectedDifficulty(null);
+            setWorkout(prev => prev ? {
+                ...prev,
+                exercises: result.exercises,
+                completed: result.completed
+            } : null);
+
+            // Notify parent component to refresh stats
+            onExerciseComplete?.();
+        } catch (err) {
+            console.error('Error marking exercise complete:', err);
+            setError('Failed to mark exercise as complete');
+        } finally {
+            setCompleting(null);
+        }
     };
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center p-8">
+            <div className="flex justify-center items-center h-64">
                 <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
             </div>
         );
     }
 
+    if (error) {
+        return (
+            <div className="bg-destructive/10 text-destructive text-sm p-4 rounded-lg">
+                {error}
+                <Button
+                    onClick={loadWorkout}
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                >
+                    Try Again
+                </Button>
+            </div>
+        );
+    }
+
+    if (!workout || workout.exercises.length === 0) {
+        return (
+            <div className="text-center py-8">
+                <p className="text-white/60">No exercises planned for today</p>
+                <Button
+                    onClick={loadWorkout}
+                    variant="outline"
+                    size="sm"
+                    className="mt-4"
+                >
+                    Refresh Exercises
+                </Button>
+            </div>
+        );
+    }
+
+    const completedCount = workout.exercises.filter(e => e.completed).length;
+
     return (
         <div className="space-y-6">
-            {/* Search and Filters */}
-            <div className="space-y-4">
-                <input
-                    type="text"
-                    placeholder="Search exercises..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-primary/50"
-                />
+            <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-semibold text-white">Today's Workout</h2>
+                <div className="flex items-center gap-2">
+                    <div className="text-sm text-white/60">
+                        {workout.completed ? (
+                            <span className="text-green-500 font-medium">All exercises completed! 🎉</span>
+                        ) : (
+                            `${completedCount}/${workout.exercises.length} completed`
+                        )}
+                    </div>
+                    <div className="w-24 h-2 bg-white/10 rounded-full overflow-hidden">
+                        <div
+                            className="h-full bg-green-500 transition-all duration-300"
+                            style={{ width: `${(completedCount / workout.exercises.length) * 100}%` }}
+                        />
+                    </div>
+                </div>
+            </div>
 
-                <div className="flex flex-wrap gap-2">
-                    <Button
-                        variant="outline"
-                        onClick={clearFilters}
-                        className="text-sm"
+            <div className="grid gap-6">
+                {workout.exercises.map((exercise: DailyExercise, index) => (
+                    <div
+                        key={index}
+                        className={`bg-white rounded-xl shadow-sm p-6 relative transition-all duration-300 ${exercise.completed
+                                ? 'border-2 border-green-500 bg-green-50'
+                                : 'hover:border-gray-300 border border-transparent'
+                            }`}
                     >
-                        Clear Filters
-                    </Button>
-                </div>
-
-                {/* Muscle Groups */}
-                <div className="space-y-2">
-                    <h3 className="text-sm font-medium">Muscle Groups</h3>
-                    <div className="flex flex-wrap gap-2">
-                        {muscleGroups.map(({ value, label }) => (
+                        {exercise.completed && (
+                            <div className="absolute top-4 right-4 bg-green-500 text-white text-xs font-medium px-2 py-1 rounded-full">
+                                Completed ✓
+                            </div>
+                        )}
+                        <div className="flex items-start justify-between">
+                            <div>
+                                <h3 className="text-lg font-medium text-gray-900">{exercise.name}</h3>
+                                <p className="text-sm text-gray-600 mt-1">
+                                    {exercise.duration} minutes
+                                </p>
+                            </div>
                             <Button
-                                key={value}
-                                variant={selectedMuscleGroups.includes(value) ? 'default' : 'outline'}
-                                onClick={() => handleMuscleGroupToggle(value)}
-                                className="text-sm"
+                                onClick={() => handleComplete(index)}
+                                variant={exercise.completed ? "outline" : "primary"}
+                                size="sm"
+                                disabled={exercise.completed || completing === index}
+                                className={`min-w-[120px] ${exercise.completed ? 'opacity-50' : ''}`}
                             >
-                                {label}
+                                {completing === index ? (
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                        Completing...
+                                    </div>
+                                ) : exercise.completed ? (
+                                    'Completed'
+                                ) : (
+                                    'Mark Complete'
+                                )}
                             </Button>
-                        ))}
-                    </div>
-                </div>
+                        </div>
 
-                {/* Equipment */}
-                <div className="space-y-2">
-                    <h3 className="text-sm font-medium">Equipment</h3>
-                    <div className="flex flex-wrap gap-2">
-                        {equipmentTypes.map(({ value, label }) => (
-                            <Button
-                                key={value}
-                                variant={selectedEquipment.includes(value) ? 'default' : 'outline'}
-                                onClick={() => handleEquipmentToggle(value)}
-                                className="text-sm"
-                            >
-                                {label}
-                            </Button>
-                        ))}
-                    </div>
-                </div>
+                        <p className="mt-4 text-sm text-gray-600">{exercise.description}</p>
 
-                {/* Difficulty */}
-                <div className="space-y-2">
-                    <h3 className="text-sm font-medium">Difficulty</h3>
-                    <div className="flex flex-wrap gap-2">
-                        {difficultyLevels.map(({ value, label }) => (
-                            <Button
-                                key={value}
-                                variant={selectedDifficulty === value ? 'default' : 'outline'}
-                                onClick={() => handleDifficultySelect(value)}
-                                className="text-sm"
-                            >
-                                {label}
-                            </Button>
-                        ))}
+                        {exercise.sets && exercise.reps && (
+                            <p className="mt-2 text-sm font-medium text-gray-700">
+                                {exercise.sets} sets × {exercise.reps} reps
+                            </p>
+                        )}
+
+                        {/* YouTube Video Embed */}
+                        {exercise.youtubeVideoId && (
+                            <div className="mt-4 aspect-video rounded-lg overflow-hidden bg-black/20">
+                                <iframe
+                                    className="w-full h-full"
+                                    src={`https://www.youtube.com/embed/${exercise.youtubeVideoId}`}
+                                    title={`${exercise.name} tutorial`}
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowFullScreen
+                                ></iframe>
+                            </div>
+                        )}
                     </div>
-                </div>
+                ))}
             </div>
 
             {error && (
-                <div className="bg-destructive/10 text-destructive text-sm p-4 rounded-lg border border-destructive/20">
+                <div className="mt-4 bg-destructive/10 text-destructive text-sm p-4 rounded-lg">
                     {error}
                 </div>
             )}
-
-            {/* Exercise List */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {exercises.map((exercise) => (
-                    <div
-                        key={exercise.id}
-                        className="bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow cursor-pointer"
-                    >
-                        {exercise.thumbnailUrl && (
-                            <div className="aspect-video mb-4 rounded-lg overflow-hidden bg-gray-100">
-                                <img
-                                    src={exercise.thumbnailUrl}
-                                    alt={exercise.name}
-                                    className="w-full h-full object-cover"
-                                />
-                            </div>
-                        )}
-                        <h3 className="font-semibold mb-2">{exercise.name}</h3>
-                        <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                            {exercise.description}
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                            {exercise.muscleGroups.map((group) => (
-                                <span
-                                    key={group}
-                                    className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full"
-                                >
-                                    {muscleGroups.find(m => m.value === group)?.label}
-                                </span>
-                            ))}
-                            <span className="text-xs px-2 py-1 bg-secondary/10 text-secondary rounded-full">
-                                {difficultyLevels.find(d => d.value === exercise.difficulty)?.label}
-                            </span>
-                        </div>
-                    </div>
-                ))}
-
-                {exercises.length === 0 && !loading && (
-                    <div className="col-span-full text-center py-8 text-muted-foreground">
-                        No exercises found matching your criteria
-                    </div>
-                )}
-            </div>
         </div>
     );
 } 

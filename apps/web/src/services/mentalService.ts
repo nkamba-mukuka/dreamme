@@ -11,6 +11,7 @@ import {
     updateDoc,
     deleteDoc,
     QueryConstraint,
+    setDoc,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import type {
@@ -30,6 +31,28 @@ const BREATHING_SESSIONS_COLLECTION = 'breathingSessions';
 const BREATHING_PRESETS_COLLECTION = 'breathingPresets';
 const MOTIVATIONS_COLLECTION = 'motivations';
 const MENTAL_STATS_COLLECTION = 'mentalHealthStats';
+
+type MoodType = 'great' | 'good' | 'okay' | 'bad' | 'terrible';
+
+interface MoodEntry {
+    id: string;
+    userId: string;
+    mood: MoodType;
+    journalEntry?: string;
+    date: Date;
+    completedBreathing: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+interface MotivationalQuote {
+    id: string;
+    quote: string;
+    author: string;
+    category: string;
+    imageUrl?: string;
+    date: string; // Added date property
+}
 
 export const mentalService = {
     // Journal CRUD operations
@@ -321,6 +344,246 @@ export const mentalService = {
 
         return statsDoc.data() as MentalHealthStats;
     },
+
+    async logMood(userId: string, mood: MoodType): Promise<MoodEntry> {
+        const moodData: Omit<MoodEntry, 'id'> = {
+            userId,
+            mood,
+            date: new Date(),
+            completedBreathing: false,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        };
+
+        const moodRef = await addDoc(collection(db, 'moodEntries'), moodData);
+        return {
+            id: moodRef.id,
+            ...moodData
+        };
+    },
+
+    async updateMoodEntry(moodEntryId: string, updates: Partial<MoodEntry>): Promise<void> {
+        const moodRef = doc(db, 'moodEntries', moodEntryId);
+        await updateDoc(moodRef, {
+            ...updates,
+            updatedAt: new Date()
+        });
+    },
+
+    async getTodaysMoodEntry(userId: string): Promise<MoodEntry | null> {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const moodRef = collection(db, 'moodEntries');
+        const q = query(
+            moodRef,
+            where('userId', '==', userId),
+            where('date', '>=', today),
+            limit(1)
+        );
+
+        const moodSnapshot = await getDocs(q);
+        if (moodSnapshot.empty) {
+            return null;
+        }
+
+        return {
+            id: moodSnapshot.docs[0].id,
+            ...moodSnapshot.docs[0].data()
+        } as MoodEntry;
+    },
+
+    async markBreathingComplete(moodEntryId: string): Promise<void> {
+        const moodRef = doc(db, 'moodEntries', moodEntryId);
+        await updateDoc(moodRef, {
+            completedBreathing: true,
+            updatedAt: new Date()
+        });
+    },
+
+    async logBreathingSession(userId: string, durationSeconds: number): Promise<void> {
+        const now = new Date();
+        const sessionData: Omit<BreathingSession, 'id'> = {
+            userId,
+            date: now,
+            durationSeconds,
+            pattern: {
+                name: 'Box Breathing',
+                description: 'A simple breathing technique to reduce stress',
+                inhaleSeconds: 4,
+                holdInhaleSeconds: 4,
+                exhaleSeconds: 4,
+                holdExhaleSeconds: 4,
+                repetitions: 4,
+                totalDurationSeconds: durationSeconds
+            },
+            completedRepetitions: Math.floor(durationSeconds / 16),
+            createdAt: now,
+            updatedAt: now
+        };
+
+        // Add to breathing sessions collection with auto-generated ID
+        await addDoc(collection(db, 'breathingSessions'), sessionData);
+
+        // Update daily activity
+        await setDoc(doc(db, 'dailyActivity', `${userId}_${now.toISOString().split('T')[0]}`), {
+            mental: true,
+            lastUpdated: now
+        }, { merge: true });
+
+        // Update progress
+        const progressRef = doc(db, 'progress', userId);
+        const progressDoc = await getDoc(progressRef);
+
+        if (progressDoc.exists()) {
+            const progress = progressDoc.data();
+            await updateDoc(progressRef, {
+                'mental.breathingMinutes': (progress.mental?.breathingMinutes || 0) + Math.round(durationSeconds / 60),
+                updatedAt: now
+            });
+        } else {
+            await setDoc(progressRef, {
+                mental: {
+                    breathingMinutes: Math.round(durationSeconds / 60),
+                    journalStreak: 0,
+                    moodScore: 0
+                },
+                createdAt: now,
+                updatedAt: now
+            });
+        }
+    },
+
+    async addJournalEntry(userId: string, content: string): Promise<void> {
+        const now = new Date();
+        const entryData: Omit<JournalEntry, 'id'> = {
+            userId,
+            content,
+            date: now,
+            mood: 3,
+            moodTags: [],
+            isPrivate: true,
+            createdAt: now,
+            updatedAt: now
+        };
+
+        // Add to journal entries collection with auto-generated ID
+        await addDoc(collection(db, 'journalEntries'), entryData);
+
+        // Update daily activity
+        await setDoc(doc(db, 'dailyActivity', `${userId}_${now.toISOString().split('T')[0]}`), {
+            mental: true,
+            lastUpdated: now
+        }, { merge: true });
+
+        // Update progress
+        const progressRef = doc(db, 'progress', userId);
+        const progressDoc = await getDoc(progressRef);
+
+        if (progressDoc.exists()) {
+            const progress = progressDoc.data();
+            await updateDoc(progressRef, {
+                'mental.journalStreak': (progress.mental?.journalStreak || 0) + 1,
+                updatedAt: now
+            });
+        } else {
+            await setDoc(progressRef, {
+                mental: {
+                    breathingMinutes: 0,
+                    journalStreak: 1,
+                    moodScore: 0
+                },
+                createdAt: now,
+                updatedAt: now
+            });
+        }
+    },
+
+    async getDailyMotivationalQuote(): Promise<MotivationalQuote> {
+        try {
+            const today = new Date().toISOString().split('T')[0];
+
+            // Try to get cached quote for today
+            const cachedQuoteDoc = await getDoc(doc(db, 'motivationalQuotes', today));
+            if (cachedQuoteDoc.exists()) {
+                return cachedQuoteDoc.data() as MotivationalQuote;
+            }
+
+            // Try Quotable API first (no CORS issues)
+            try {
+                const response = await fetch('https://api.quotable.io/quotes/random?tags=inspirational,motivation');
+                if (response.ok) {
+                    const [data] = await response.json();
+                    const quote: MotivationalQuote = {
+                        id: data._id,
+                        quote: data.content,
+                        author: data.author,
+                        category: 'motivation',
+                        date: today
+                    };
+                    await setDoc(doc(db, 'motivationalQuotes', today), quote);
+                    return quote;
+                }
+            } catch (error) {
+                console.error('Quotable API failed:', error);
+            }
+
+            // Fallback to static quotes if API fails
+            const fallbackQuotes = [
+                { quote: 'Dream big, work hard, stay focused.', author: 'DreamMe' },
+                { quote: 'Your only limit is your mind.', author: 'DreamMe' },
+                { quote: 'Make today amazing.', author: 'DreamMe' },
+                { quote: 'Stay focused and never give up.', author: 'DreamMe' },
+                { quote: 'Every rep brings you closer to your dream.', author: 'DreamMe' },
+                { quote: 'Transform your dreams into reality.', author: 'DreamMe' },
+                { quote: 'Your future self will thank you.', author: 'DreamMe' },
+                { quote: 'Small steps lead to big changes.', author: 'DreamMe' },
+                { quote: 'Believe in yourself and dream big.', author: 'DreamMe' },
+                { quote: 'Success is built one workout at a time.', author: 'DreamMe' }
+            ];
+
+            const randomQuote = fallbackQuotes[Math.floor(Math.random() * fallbackQuotes.length)];
+            const quote: MotivationalQuote = {
+                id: 'dreamme-' + today,
+                ...randomQuote,
+                category: 'motivation',
+                date: today
+            };
+
+            await setDoc(doc(db, 'motivationalQuotes', today), quote);
+            return quote;
+        } catch (error) {
+            console.error('Error fetching quote:', error);
+            const today = new Date().toISOString().split('T')[0];
+            return {
+                id: 'default',
+                quote: 'Dream big with DreamMe',
+                author: 'DreamMe',
+                category: 'motivation',
+                date: today
+            };
+        }
+    },
+
+    async getMoodHistory(userId: string, days: number = 7): Promise<MoodEntry[]> {
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+        startDate.setHours(0, 0, 0, 0);
+
+        const moodRef = collection(db, 'moodEntries');
+        const q = query(
+            moodRef,
+            where('userId', '==', userId),
+            where('date', '>=', startDate),
+            orderBy('date', 'desc')
+        );
+
+        const moodSnapshot = await getDocs(q);
+        return moodSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        })) as MoodEntry[];
+    }
 };
 
 // Helper functions

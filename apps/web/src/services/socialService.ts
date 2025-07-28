@@ -42,6 +42,13 @@ const ACHIEVEMENTS_COLLECTION = 'achievements';
 const USER_ACHIEVEMENTS_COLLECTION = 'userAchievements';
 const NOTIFICATIONS_COLLECTION = 'notifications';
 
+interface FollowDocument {
+    id: string;
+    followerId: string;
+    followedId: string;
+    createdAt: string;
+}
+
 export const socialService = {
     // Profile Management
     async getProfile(userId: string): Promise<PublicProfile | null> {
@@ -178,31 +185,8 @@ export const socialService = {
     },
 
     async unfollowUser(followId: string): Promise<void> {
-        const followRef = doc(db, FOLLOWS_COLLECTION, followId);
-        const followDoc = await getDoc(followRef);
-
-        if (!followDoc.exists()) {
-            throw new Error('Follow not found');
-        }
-
-        const follow = followDoc.data() as Follow;
-
+        const followRef = doc(db, 'followers', followId);
         await deleteDoc(followRef);
-
-        // Update follower counts
-        const updateData = {
-            stats: {
-                followingCount: increment(-1) as unknown as number,
-            },
-        } as Partial<PublicProfile>;
-        await this.updateProfile(follow.followerId, updateData);
-
-        const updateData2 = {
-            stats: {
-                followersCount: increment(-1) as unknown as number,
-            },
-        } as Partial<PublicProfile>;
-        await this.updateProfile(follow.followingId, updateData2);
     },
 
     // Post Management
@@ -642,6 +626,52 @@ export const socialService = {
             batch.update(doc.ref, { isRead: true });
         });
         await batch.commit();
+    },
+
+    async getFollowerCount(userId: string): Promise<number> {
+        const followersRef = collection(db, 'followers');
+        const q = query(followersRef, where('followedId', '==', userId));
+        const snapshot = await getDocs(q);
+        return snapshot.size;
+    },
+
+    async getFollowingCount(userId: string): Promise<number> {
+        const followersRef = collection(db, 'followers');
+        const q = query(followersRef, where('followerId', '==', userId));
+        const snapshot = await getDocs(q);
+        return snapshot.size;
+    },
+
+    async getFollowStatus(followerId: string, followedId: string): Promise<boolean> {
+        const followersRef = collection(db, 'followers');
+        const q = query(
+            followersRef,
+            where('followerId', '==', followerId),
+            where('followedId', '==', followedId)
+        );
+        const snapshot = await getDocs(q);
+        return !snapshot.empty;
+    },
+
+    async getFollowDocument(followerId: string, followedId: string): Promise<FollowDocument> {
+        const followersRef = collection(db, 'followers');
+        const q = query(
+            followersRef,
+            where('followerId', '==', followerId),
+            where('followedId', '==', followedId)
+        );
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+            throw new Error('Follow document not found');
+        }
+
+        const doc = snapshot.docs[0];
+        return {
+            id: doc.id,
+            ...doc.data(),
+            createdAt: doc.data().createdAt.toDate().toISOString()
+        } as FollowDocument;
     },
 };
 

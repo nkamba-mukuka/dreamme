@@ -1,36 +1,138 @@
 rules_version = '2';
-
 service cloud.firestore {
-  match /databases/{database}/documents {
-    // Common functions
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-    
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
+    match /databases/{database}/documents {
+        // Helper functions
+        function isSignedIn() {
+            return request.auth != null;
+        }
 
-    // User profiles
-    match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow write: if isOwner(userId);
-      
-      // User specific data
-      match /private/{document=**} {
-        allow read, write: if isOwner(userId);
-      }
-    }
+        function isOwner(userId) {
+            return request.auth.uid == userId;
+        }
 
-    // Public data
-    match /public/{document=**} {
-      allow read: if true;
-      allow write: if isAuthenticated();
-    }
+        // User profiles - allow reading all profiles but only owner can write
+        match /profiles/{userId} {
+            allow read: if isSignedIn();
+            allow write: if isSignedIn() && isOwner(userId);
+        }
 
-    // Default deny
-    match /{document=**} {
-      allow read, write: if false;
+        // Daily Activity
+        match /dailyActivity/{activityId} {
+            allow read, write: if isSignedIn() && activityId.matches(request.auth.uid + '_.*');
+        }
+
+        // Daily Workouts
+        match /dailyWorkouts/{workoutId} {
+            allow read: if isSignedIn() && workoutId.matches(request.auth.uid + '_.*');
+            allow write: if isSignedIn() && workoutId.matches(request.auth.uid + '_.*');
+        }
+
+        // Exercise data
+        match /exercises/{exerciseId} {
+            allow read: if isSignedIn();
+            allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+        }
+
+        match /workoutLogs/{logId} {
+            allow read: if isSignedIn() && (
+                logId.matches(request.auth.uid + '_.*') || 
+                resource.data.userId == request.auth.uid
+            );
+            allow write: if isSignedIn() && (
+                logId.matches(request.auth.uid + '_.*') || 
+                request.resource.data.userId == request.auth.uid
+            );
+        }
+
+        // Nutrition data
+        match /dailyMealPlans/{planId} {
+            allow read: if isSignedIn() && planId.matches(request.auth.uid + '_.*');
+            allow write: if isSignedIn() && planId.matches(request.auth.uid + '_.*');
+        }
+
+        match /mealLogs/{logId} {
+            allow read: if isSignedIn() && (
+                logId.matches(request.auth.uid + '_.*') || 
+                resource.data.userId == request.auth.uid
+            );
+            allow write: if isSignedIn() && (
+                logId.matches(request.auth.uid + '_.*') || 
+                request.resource.data.userId == request.auth.uid
+            );
+        }
+
+        match /nutritionGoals/{userId} {
+            allow read: if isSignedIn() && isOwner(userId);
+            allow write: if isSignedIn() && isOwner(userId);
+        }
+
+        match /recipes/{recipeId} {
+            allow read: if isSignedIn();
+            allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+        }
+
+        // Mental health data
+        match /moodEntries/{entryId} {
+            allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+            allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+        }
+
+        match /journalEntries/{entryId} {
+            allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+            allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+        }
+
+        match /breathingSessions/{sessionId} {
+            allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+            allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+        }
+
+        match /motivationalQuotes/{quoteId} {
+            allow read: if isSignedIn();
+            allow write: if false;  // Only admins can write quotes
+        }
+
+        match /mentalHealthStats/{statsId} {
+            allow read: if isSignedIn() && statsId.matches(request.auth.uid + '_.*');
+            allow write: if isSignedIn() && statsId.matches(request.auth.uid + '_.*');
+        }
+
+        // Social features
+        match /follows/{followId} {
+            allow read: if isSignedIn();
+            allow write: if isSignedIn() && (
+                request.resource.data.followerId == request.auth.uid ||
+                request.resource.data.followingId == request.auth.uid
+            );
+        }
+
+        match /messages/{messageId} {
+            allow read: if isSignedIn() && (
+                resource.data.senderId == request.auth.uid ||
+                resource.data.receiverId == request.auth.uid
+            );
+            allow write: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
+        }
+
+        match /socialActivity/{activityId} {
+            allow read: if isSignedIn();
+            allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+        }
+
+        match /socialStats/{userId} {
+            allow read: if isSignedIn();
+            allow write: if isSignedIn() && isOwner(userId);
+        }
+
+        // Progress tracking
+        match /progress/{userId} {
+            allow read: if isSignedIn() && isOwner(userId);
+            allow write: if isSignedIn() && isOwner(userId);
+        }
+
+        // Default deny
+        match /{document=**} {
+            allow read, write: if false;
+        }
     }
-  }
 } 

@@ -1,46 +1,75 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { Button, Card } from '@dreamme/ui';
 import { useAuth } from '../../lib/auth';
 import { exerciseService } from '../../services/exerciseService';
-import type { ExerciseProgress, Exercise } from '../../types/exercise';
+import { motion } from 'framer-motion';
 
-export function ProgressDashboard() {
+interface WorkoutStats {
+    weeklyWorkouts: {
+        date: string;
+        count: number;
+    }[];
+    monthlyStats: {
+        totalWorkouts: number;
+        totalMinutes: number;
+        averageRating: number;
+        streak: number;
+    };
+    recentPBs: {
+        exercise: string;
+        value: string;
+        date: string;
+    }[];
+    popularExercises: {
+        name: string;
+        count: number;
+    }[];
+}
+
+export interface ProgressDashboardRef {
+    refreshStats: () => Promise<void>;
+}
+
+export const ProgressDashboard = forwardRef<ProgressDashboardRef>((props, ref) => {
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [progressData, setProgressData] = useState<(ExerciseProgress & { exercise: Exercise })[]>([]);
+    const [stats, setStats] = useState<WorkoutStats | null>(null);
 
-    useEffect(() => {
-        const loadProgressData = async () => {
-            if (!user) return;
+    const loadStats = async () => {
+        if (!user) return;
 
+        try {
             setLoading(true);
             setError(null);
 
-            try {
-                const progress = await exerciseService.getAllExerciseProgress(user.uid);
+            // Get weekly workouts
+            const weeklyWorkouts = await exerciseService.getWeeklyWorkouts(user.uid);
+            const monthlyStats = await exerciseService.getMonthlyStats(user.uid);
+            const recentPBs = await exerciseService.getRecentPBs(user.uid);
+            const popularExercises = await exerciseService.getPopularExercises(user.uid);
 
-                // Load exercise details for each progress entry
-                const progressWithExercises = await Promise.all(
-                    progress.map(async (p) => {
-                        const exercise = await exerciseService.getExercise(p.exerciseId);
-                        return {
-                            ...p,
-                            exercise: exercise!,
-                        };
-                    })
-                );
+            setStats({
+                weeklyWorkouts,
+                monthlyStats,
+                recentPBs,
+                popularExercises
+            });
+        } catch (err) {
+            console.error('Error loading workout stats:', err);
+            setError('Failed to load workout progress');
+        } finally {
+            setLoading(false);
+        }
+    };
 
-                setProgressData(progressWithExercises);
-            } catch (err) {
-                console.error('Error loading progress data:', err);
-                setError('Failed to load progress data');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        loadProgressData();
+    useEffect(() => {
+        loadStats();
     }, [user]);
+
+    useImperativeHandle(ref, () => ({
+        refreshStats: loadStats
+    }));
 
     if (loading) {
         return (
@@ -52,136 +81,121 @@ export function ProgressDashboard() {
 
     if (error) {
         return (
-            <div className="p-8 text-center text-destructive">
+            <div className="bg-red-500/10 text-red-200 p-4 rounded-lg border border-red-500/20">
                 {error}
+                <Button onClick={() => setError(null)} variant="outline" className="mt-2">
+                    Try Again
+                </Button>
             </div>
         );
     }
 
-    if (progressData.length === 0) {
+    if (!stats) {
         return (
-            <div className="p-8 text-center text-muted-foreground">
-                No workout data available yet. Start exercising to see your progress!
+            <div className="text-center py-8">
+                <p className="text-white/60">No workout data available yet. Start logging your workouts!</p>
+                <Button onClick={() => window.location.href = '/exercise'} variant="primary" className="mt-4">
+                    Log a Workout
+                </Button>
             </div>
         );
     }
-
-    // Calculate total stats
-    const totalWorkouts = progressData.reduce((sum, p) => sum + p.totalSessions, 0);
-    const totalMinutes = progressData.reduce((sum, p) => sum + p.totalDuration, 0);
-    const totalCalories = progressData.reduce(
-        (sum, p) => sum + (p.totalDuration * p.exercise.caloriesBurnedPerMinute),
-        0
-    );
-
-    // Sort exercises by most recent
-    const sortedProgress = [...progressData].sort(
-        (a, b) => (b.lastPerformed?.getTime() || 0) - (a.lastPerformed?.getTime() || 0)
-    );
 
     return (
         <div className="space-y-8">
-            {/* Overall Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white p-6 rounded-xl shadow-sm">
-                    <h3 className="text-lg font-semibold mb-2">Total Workouts</h3>
-                    <p className="text-3xl font-bold text-primary">{totalWorkouts}</p>
-                    <p className="text-sm text-muted-foreground">Sessions completed</p>
-                </div>
-
-                <div className="bg-white p-6 rounded-xl shadow-sm">
-                    <h3 className="text-lg font-semibold mb-2">Total Time</h3>
-                    <p className="text-3xl font-bold text-primary">{totalMinutes}</p>
-                    <p className="text-sm text-muted-foreground">Minutes of exercise</p>
-                </div>
-
-                <div className="bg-white p-6 rounded-xl shadow-sm">
-                    <h3 className="text-lg font-semibold mb-2">Calories Burned</h3>
-                    <p className="text-3xl font-bold text-primary">{Math.round(totalCalories)}</p>
-                    <p className="text-sm text-muted-foreground">Estimated total</p>
-                </div>
-            </div>
-
-            {/* Exercise Progress List */}
-            <div className="space-y-4">
-                <h3 className="text-xl font-semibold">Exercise Progress</h3>
-                <div className="grid gap-4">
-                    {sortedProgress.map((progress) => (
+            {/* Weekly Progress */}
+            <Card variant="glass" padding="lg">
+                <h2 className="text-xl font-semibold mb-4 text-white">Weekly Progress</h2>
+                <div className="grid grid-cols-7 gap-2">
+                    {stats.weeklyWorkouts.map((day) => (
                         <div
-                            key={progress.exerciseId}
-                            className="bg-white p-6 rounded-xl shadow-sm"
+                            key={day.date}
+                            className="flex flex-col items-center"
                         >
-                            <div className="flex justify-between items-start mb-4">
-                                <div>
-                                    <h4 className="font-semibold mb-1">
-                                        {progress.exercise.name}
-                                    </h4>
-                                    <p className="text-sm text-muted-foreground">
-                                        Last performed: {progress.lastPerformed?.toLocaleDateString()}
-                                    </p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-sm font-medium">
-                                        {progress.totalSessions} sessions
-                                    </p>
-                                    <p className="text-sm text-muted-foreground">
-                                        {progress.totalDuration} minutes total
-                                    </p>
-                                </div>
+                            <div className="text-sm text-white/60">
+                                {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}
                             </div>
-
-                            {/* Personal Bests */}
-                            <div className="space-y-2">
-                                <h5 className="text-sm font-medium">Personal Bests</h5>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    {progress.personalBests.maxWeight && (
-                                        <div className="bg-primary/5 p-2 rounded-lg">
-                                            <p className="text-xs text-muted-foreground">Max Weight</p>
-                                            <p className="font-medium">{progress.personalBests.maxWeight}kg</p>
-                                        </div>
-                                    )}
-                                    {progress.personalBests.maxReps && (
-                                        <div className="bg-primary/5 p-2 rounded-lg">
-                                            <p className="text-xs text-muted-foreground">Max Reps</p>
-                                            <p className="font-medium">{progress.personalBests.maxReps}</p>
-                                        </div>
-                                    )}
-                                    {progress.personalBests.maxDuration && (
-                                        <div className="bg-primary/5 p-2 rounded-lg">
-                                            <p className="text-xs text-muted-foreground">Max Duration</p>
-                                            <p className="font-medium">{progress.personalBests.maxDuration}s</p>
-                                        </div>
-                                    )}
-                                    {progress.personalBests.maxDistance && (
-                                        <div className="bg-primary/5 p-2 rounded-lg">
-                                            <p className="text-xs text-muted-foreground">Max Distance</p>
-                                            <p className="font-medium">{progress.personalBests.maxDistance}m</p>
-                                        </div>
-                                    )}
-                                </div>
+                            <div
+                                className={`w-full h-24 rounded-lg mt-2 flex items-end ${day.count > 0 ? 'bg-primary/20' : 'bg-white/5'
+                                    }`}
+                            >
+                                <div
+                                    className="bg-primary rounded-lg w-full transition-all duration-500"
+                                    style={{ height: `${(day.count / 3) * 100}%` }}
+                                />
                             </div>
-
-                            {/* Progress Bar */}
-                            <div className="mt-4">
-                                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-primary"
-                                        style={{
-                                            width: `${Math.min(
-                                                (progress.totalSessions / 10) * 100,
-                                                100
-                                            )}%`,
-                                        }}
-                                    />
-                                </div>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    {progress.totalSessions} / 10 sessions completed
-                                </p>
+                            <div className="text-sm font-medium mt-1 text-white">
+                                {day.count}
                             </div>
                         </div>
                     ))}
                 </div>
+            </Card>
+
+            {/* Monthly Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <Card variant="glass" padding="md">
+                    <h3 className="text-sm font-medium text-white/60">Total Workouts</h3>
+                    <p className="text-2xl font-bold mt-2 text-white">{stats.monthlyStats.totalWorkouts}</p>
+                </Card>
+                <Card variant="glass" padding="md">
+                    <h3 className="text-sm font-medium text-white/60">Total Minutes</h3>
+                    <p className="text-2xl font-bold mt-2 text-white">{stats.monthlyStats.totalMinutes}</p>
+                </Card>
+                <Card variant="glass" padding="md">
+                    <h3 className="text-sm font-medium text-white/60">Average Rating</h3>
+                    <p className="text-2xl font-bold mt-2 text-white">{stats.monthlyStats.averageRating.toFixed(1)}</p>
+                </Card>
+                <Card variant="glass" padding="md">
+                    <h3 className="text-sm font-medium text-white/60">Current Streak</h3>
+                    <p className="text-2xl font-bold mt-2 text-white">{stats.monthlyStats.streak} days</p>
+                </Card>
             </div>
+
+            {/* Recent Personal Bests */}
+            {stats.recentPBs.length > 0 && (
+                <Card variant="glass" padding="lg">
+                    <h2 className="text-xl font-semibold mb-4 text-white">Recent Personal Bests</h2>
+                    <div className="space-y-4">
+                        {stats.recentPBs.map((pb) => (
+                            <div
+                                key={`${pb.exercise}-${pb.date}`}
+                                className="flex items-center justify-between"
+                            >
+                                <div>
+                                    <h3 className="font-medium text-white">{pb.exercise}</h3>
+                                    <p className="text-sm text-white/60">
+                                        {new Date(pb.date).toLocaleDateString()}
+                                    </p>
+                                </div>
+                                <div className="text-lg font-bold text-primary">
+                                    {pb.value}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+            )}
+
+            {/* Popular Exercises */}
+            {stats.popularExercises.length > 0 && (
+                <Card variant="glass" padding="lg">
+                    <h2 className="text-xl font-semibold mb-4 text-white">Most Popular Exercises</h2>
+                    <div className="space-y-4">
+                        {stats.popularExercises.map((exercise) => (
+                            <div
+                                key={exercise.name}
+                                className="flex items-center justify-between"
+                            >
+                                <h3 className="font-medium text-white">{exercise.name}</h3>
+                                <p className="text-white/60">
+                                    {exercise.count} times
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+            )}
         </div>
     );
-} 
+}); 

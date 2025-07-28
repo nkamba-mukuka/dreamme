@@ -9,6 +9,13 @@
             "@/*": [
                 "./src/*"
             ]
-        }
+        },
+        "jsx": "react-jsx",
+        "types": [
+            "vite/client",
+            "vitest/globals"
+        ],
+        "noUnusedLocals": false,
+        "noUnusedParameters": false
     }
 }

@@ -1,41 +1,49 @@
-export type MuscleGroup =
-    | 'chest'
-    | 'back'
-    | 'shoulders'
-    | 'biceps'
-    | 'triceps'
-    | 'legs'
-    | 'core'
-    | 'fullBody';
-
-export type Equipment =
-    | 'bodyweight'
-    | 'dumbbell'
-    | 'barbell'
-    | 'kettlebell'
-    | 'resistanceBand'
-    | 'machine'
-    | 'cable'
-    | 'other';
-
-export type ExerciseDifficulty =
-    | 'beginner'
-    | 'intermediate'
-    | 'advanced';
+export type MuscleGroup = 'chest' | 'back' | 'shoulders' | 'biceps' | 'triceps' | 'legs' | 'core' | 'fullBody' | 'arms';
+export type Equipment = 'bodyweight' | 'dumbbell' | 'barbell' | 'kettlebell' | 'resistanceBand' | 'machine' | 'cable' | 'other';
+export type ExerciseDifficulty = 'beginner' | 'intermediate' | 'advanced';
 
 export interface Exercise {
-    id: string;
+    id?: string;
     name: string;
     description: string;
+    type: string;
+    duration: string;
+    videoUrl: string;
     muscleGroups: MuscleGroup[];
     equipment: Equipment[];
     difficulty: ExerciseDifficulty;
     instructions: string[];
     tips: string[];
-    youtubeVideoId?: string;
-    thumbnailUrl?: string;
-    estimatedDuration: number; // in minutes
-    caloriesBurnedPerMinute: number; // estimated calories burned per minute
+    youtubeVideoId: string;
+    estimatedDuration: number;
+    caloriesBurnedPerMinute: number;
+    completed: boolean;
+    sets?: number;
+    reps?: number;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+export interface DailyExercise {
+    exerciseId: string;
+    name: string;
+    description: string;
+    youtubeVideoId: string;
+    thumbnailUrl: string;
+    demoImageUrl: string;
+    duration: number;
+    sets: number;
+    reps: number;
+    completed: boolean;
+}
+
+export interface DailyWorkout {
+    id: string;
+    userId: string;
+    date: Date;
+    exercises: DailyExercise[];
+    completed: boolean;
+    fitnessGoal: string;
     createdAt: Date;
     updatedAt: Date;
 }
